@@ -1,0 +1,695 @@
+/* =============================================================
+   勤怠管理（統合版） - admin.css
+   ============================================================= */
+   勤怠管理 | 事務・地場 - admin.css
+   ============================================================= */
+
+.am-wrap {
+    max-width: 1600px;
+    margin: 20px auto 40px;
+    font-family: "Noto Sans JP", "Hiragino Kaku Gothic ProN", "メイリオ", sans-serif;
+}
+
+/* ---- ページヘッダー ---- */
+.am-page-header {
+    background: linear-gradient(135deg, #1e3a5f 0%, #2e6da4 100%);
+    color: #fff;
+    border-radius: 8px;
+    padding: 22px 28px 18px;
+    margin-bottom: 24px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, .18);
+}
+
+.am-page-title {
+    font-size: 22px !important;
+    font-weight: 700;
+    margin: 0 0 6px !important;
+    color: #fff !important;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.am-page-title .dashicons {
+    font-size: 26px;
+    width: 26px;
+    height: 26px;
+}
+
+.am-page-desc {
+    margin: 0;
+    font-size: 13px;
+    color: rgba(255, 255, 255, .82);
+}
+
+/* ---- ノーティス ---- */
+.am-notice {
+    padding: 10px 16px;
+    border-radius: 5px;
+    font-size: 13px;
+    margin-bottom: 16px;
+}
+
+.am-notice-error {
+    background: #fff0f0;
+    border-left: 4px solid #d63638;
+    color: #7a1a1a;
+}
+
+.am-notice-warn {
+    background: #fffbe6;
+    border-left: 4px solid #dba617;
+    color: #6b4c00;
+}
+
+/* ---- カード ---- */
+.am-card {
+    background: #fff;
+    border: 1px solid #dde3ea;
+    border-radius: 8px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, .07);
+    margin-bottom: 24px;
+    overflow: hidden;
+}
+
+.am-card-header {
+    background: #f4f7fb;
+    border-bottom: 1px solid #dde3ea;
+    padding: 12px 20px;
+    font-size: 14px;
+    font-weight: 700;
+    color: #1e3a5f;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.am-card-header .dashicons {
+    color: #2e6da4;
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+}
+
+.am-card-body {
+    padding: 22px 24px;
+}
+
+/* ---- フォーム ---- */
+.am-form-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 20px;
+}
+
+.am-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.am-form-group--btn {
+    padding-bottom: 1px;
+}
+
+.am-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: #444;
+    letter-spacing: .03em;
+}
+
+.am-select {
+    height: 38px;
+    min-width: 200px;
+    padding: 0 10px;
+    border: 1px solid #c3cdd8;
+    border-radius: 5px;
+    background: #fff;
+    font-size: 14px;
+    color: #333;
+    cursor: pointer;
+    transition: border-color .2s;
+}
+
+.am-select:focus {
+    outline: none;
+    border-color: #2e6da4;
+    box-shadow: 0 0 0 2px rgba(46, 109, 164, .18);
+}
+
+.am-input-month {
+    height: 38px;
+    padding: 0 10px;
+    border: 1px solid #c3cdd8;
+    border-radius: 5px;
+    font-size: 14px;
+    color: #333;
+    background: #fff;
+}
+
+.am-input-month:focus {
+    outline: none;
+    border-color: #2e6da4;
+    box-shadow: 0 0 0 2px rgba(46, 109, 164, .18);
+}
+
+/* ---- ボタン ---- */
+.am-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 38px;
+    padding: 0 18px;
+    border: none;
+    border-radius: 5px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background .2s, opacity .2s;
+    letter-spacing: .03em;
+}
+
+.am-btn-nav {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    background: #e8eef5;
+    color: #1e3a5f;
+    border-radius: 50%;
+    text-decoration: none;
+    transition: background .15s;
+}
+
+.am-btn-nav:hover {
+    background: #c3d3e8;
+    color: #1e3a5f;
+}
+
+.am-btn-nav .dashicons {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+}
+
+.am-btn-primary {
+    background: #2e6da4;
+    color: #fff;
+}
+
+.am-btn-primary:hover:not(:disabled) {
+    background: #1e5080;
+    color: #fff;
+}
+
+.am-btn-primary:disabled {
+    background: #aac2da;
+    cursor: not-allowed;
+    opacity: .75;
+}
+
+.am-btn .dashicons {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+}
+
+/* ===============================================================
+   保存ボタン
+   ============================================================= */
+.am-btn-save {
+    background: #2c5f2e;
+    color: #fff;
+    margin-left: auto;
+}
+
+.am-btn-save:hover {
+    background: #1e4220;
+    color: #fff;
+}
+
+.am-btn-save:disabled {
+    background: #aaa;
+    cursor: not-allowed;
+    opacity: .75;
+}
+
+/* ---- 社員情報テーブル ---- */
+.am-info-table {
+    width: auto;
+    border-collapse: collapse;
+    font-size: 13px;
+    margin-bottom: 24px;
+}
+
+.am-info-table thead tr {
+    background: #1e3a5f;
+    color: #fff;
+}
+
+.am-info-table th {
+    padding: 8px 18px;
+    text-align: left;
+    font-weight: 700;
+    border: 1px solid #15304f;
+    white-space: nowrap;
+}
+
+.am-info-table tbody tr {
+    background: #f9fbfd;
+}
+
+.am-info-table td {
+    padding: 8px 18px;
+    border: 1px solid #dde3ea;
+    color: #222;
+}
+
+/* ---- メインテーブルラッパー ---- */
+.am-table-wrap {
+    overflow-x: auto;
+    border-radius: 6px;
+    border: 1px solid #dde3ea;
+    height: 400px;
+}
+
+/* ---- 勤怠メインテーブル ---- */
+.am-main-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    white-space: nowrap;
+    min-width: 900px;
+}
+
+.am-main-table thead tr {
+    background: #1e3a5f;
+    color: #fff;
+}
+
+.am-main-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: #1e3a5f;
+}
+
+.am-main-table th {
+    padding: 9px 10px;
+    text-align: center;
+    font-weight: 700;
+    border: 1px solid #15304f;
+    font-size: 12px;
+    letter-spacing: .02em;
+}
+
+.am-main-table tbody tr {
+    background: #fff;
+}
+
+.am-main-table tbody tr:nth-child(even) {
+    background: #f7fafd;
+}
+
+.am-main-table tbody tr:hover {
+    background: #eef4fb;
+}
+
+.am-main-table td {
+    padding: 6px 10px;
+    border: 1px solid #e0e6ee;
+    text-align: center;
+    color: #333;
+    vertical-align: middle;
+}
+
+/* 曜日・日付 */
+.col-date {
+    text-align: left;
+    min-width: 80px;
+    font-weight: 600;
+}
+
+.am-date-row {
+    display: block;
+}
+
+.am-dow {
+    display: inline;
+    font-size: 11px;
+    color: #666;
+    margin-left: 4px;
+}
+
+/* 列幅 */
+.col-kintai { min-width: 110px; }
+.col-time   { min-width: 70px; }
+.col-min    { min-width: 68px; }
+
+/* 行カラーリング */
+.am-row-sun td { background: #fff5f5 !important; }
+.am-row-sun td .am-dow { color: #d63638; font-weight: 700; }
+.am-row-sat td { background: #f0f5ff !important; }
+.am-row-sat td .am-dow { color: #2e6da4; font-weight: 700; }
+.am-row-off td { color: #aaa; }
+
+/* 残業セル */
+.am-cell-over {
+    color: #c0392b;
+    font-weight: 700;
+}
+
+/* 勤怠種別セレクト */
+.am-kintai-select {
+    width: 100%;
+    font-size: 12px;
+    padding: 3px 4px;
+    border: 1px solid #c3cdd8;
+    border-radius: 4px;
+    background: #fff;
+    cursor: pointer;
+}
+
+/* 手動変更済み行 */
+tr[data-auto="false"] .am-kintai-select {
+    border-color: #2e6da4;
+    background: #f0f7ff;
+}
+
+/* ===============================================================
+   長距離トグル（旧:地場トグル）
+   ============================================================= */
+.col-jiba {
+    min-width: 52px;
+    text-align: center;
+}
+
+.am-toggle {
+    position: relative;
+    display: inline-block;
+    width: 36px;
+    height: 20px;
+    cursor: pointer;
+    margin: 0;
+}
+
+.am-toggle input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+    position: absolute;
+}
+
+.am-toggle-slider {
+    position: absolute;
+    inset: 0;
+    background: #ccc;
+    border-radius: 20px;
+    transition: background .2s;
+}
+
+.am-toggle-slider::before {
+    content: '';
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    left: 3px;
+    top: 3px;
+    background: #fff;
+    border-radius: 50%;
+    transition: transform .2s;
+}
+
+.am-toggle input:checked + .am-toggle-slider {
+    background: #2e6da4;
+}
+
+.am-toggle input:checked + .am-toggle-slider::before {
+    transform: translateX(16px);
+}
+
+/* 早退/遅刻 input */
+.am-hayatai-input {
+    width: 58px;
+    text-align: center;
+    font-size: 12px;
+    padding: 3px 4px;
+    border: 1px solid #c3cdd8;
+    border-radius: 4px;
+    background: #fff;
+}
+
+.am-hayatai-input:focus {
+    outline: none;
+    border-color: #c17b00;
+    box-shadow: 0 0 0 2px rgba(193, 123, 0, .15);
+}
+
+/* 備考 input */
+.col-note { min-width: 120px; }
+
+.am-note-input {
+    width: 100%;
+    font-size: 12px;
+    padding: 3px 6px;
+    border: 1px solid #c3cdd8;
+    border-radius: 4px;
+    background: #fff;
+    box-sizing: border-box;
+}
+
+.am-note-input:focus {
+    outline: none;
+    border-color: #2e6da4;
+    box-shadow: 0 0 0 2px rgba(46, 109, 164, .15);
+}
+
+/* ===============================================================
+   所属フィルターチップ
+   ============================================================= */
+.am-affil-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+
+.am-chip {
+    display: inline-flex;
+    align-items: center;
+    height: 28px;
+    padding: 0 14px;
+    border: 1.5px solid #c3cdd8;
+    border-radius: 14px;
+    background: #fff;
+    color: #555;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background .15s, border-color .15s, color .15s;
+    letter-spacing: .03em;
+}
+
+.am-chip:hover { border-color: #2e6da4; color: #2e6da4; }
+
+.am-chip.am-chip-active {
+    background: #2e6da4;
+    border-color: #2e6da4;
+    color: #fff;
+}
+
+/* ===============================================================
+   週次サマリーテーブル
+   ============================================================= */
+.am-weekly-wrap {
+    margin-top: 28px;
+    height: auto;
+}
+
+.am-weekly-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    white-space: nowrap;
+    min-width: 800px;
+}
+
+.am-weekly-table thead tr { background: #2c5f2e; color: #fff; }
+
+.am-weekly-table th {
+    padding: 9px 12px;
+    text-align: center;
+    font-weight: 700;
+    border: 1px solid #1e4220;
+    font-size: 12px;
+    letter-spacing: .02em;
+}
+
+.am-weekly-table tbody tr { background: #fff; }
+.am-weekly-table tbody tr:nth-child(even) { background: #f7fdf7; }
+.am-weekly-table tbody tr:hover { background: #edfaed; }
+
+.am-weekly-table td {
+    padding: 8px 12px;
+    border: 1px solid #cde0cd;
+    text-align: center;
+    color: #333;
+    vertical-align: middle;
+}
+
+.wcol-label {
+    text-align: left;
+    min-width: 90px;
+    font-weight: 700;
+    color: #1e3a5f;
+}
+
+.wcol-date { min-width: 80px; }
+.wcol-days { min-width: 45px; }
+.wcol-min  { min-width: 72px; }
+
+.am-week-carryover td { background: #fffbea !important; color: #7a5200; }
+.am-week-prev-carry td { background: #f0f4ff !important; color: #3a4a7a; font-style: italic; }
+.am-week-prev-carry .wcol-label { color: #2e6da4; font-weight: 700; }
+.am-cell-na { color: #aaa; background: #f5f5f5 !important; font-style: normal; letter-spacing: .05em; }
+.am-cell-confirmed { background: #f0fff0; font-weight: 700; }
+
+.am-badge-carryover {
+    display: inline-block;
+    background: #d9a800;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 3px;
+    letter-spacing: .04em;
+}
+
+.am-badge-kyukin {
+    display: inline-block;
+    background: #8b4513;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 3px;
+    letter-spacing: .03em;
+    white-space: nowrap;
+}
+
+/* ===============================================================
+   振替ラベル
+   ============================================================= */
+.am-furikae-label {
+    display: block;
+    font-size: 10px;
+    color: #c0392b;
+    font-weight: 700;
+    margin-top: 2px;
+    white-space: nowrap;
+}
+
+/* ===============================================================
+   警告バッジ
+   ============================================================= */
+.am-alerts {
+    margin-bottom: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.am-alert {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border-radius: 5px;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.am-alert-warn { background: #fffbe6; border-left: 4px solid #dba617; color: #6b4c00; }
+.am-alert-error { background: #fff0f0; border-left: 4px solid #d63638; color: #7a1a1a; }
+
+.am-alert .dashicons { font-size: 18px; width: 18px; height: 18px; flex-shrink: 0; }
+
+/* ===============================================================
+   月間サマリ
+   ============================================================= */
+.am-monthly-summary-wrap {
+    margin-top: 28px;
+    border: 1px solid #dde3ea;
+    border-radius: 6px;
+    overflow: hidden;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, .07);
+}
+
+.am-ms-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    white-space: nowrap;
+    background: #fff;
+}
+
+.am-ms-table thead tr { background: #1e3a5f; color: #fff; }
+
+.am-ms-table thead th {
+    padding: 10px 16px;
+    text-align: center;
+    font-weight: 700;
+    border: 1px solid #15304f;
+    font-size: 12px;
+    letter-spacing: .03em;
+}
+
+.am-ms-table tbody tr { background: #f9fbfd; }
+.am-ms-table tbody tr:hover { background: #eef4fb; }
+
+.am-ms-table td {
+    padding: 14px 20px;
+    border: 1px solid #dde3ea;
+    text-align: center;
+    vertical-align: middle;
+}
+
+.am-ms-num {
+    font-size: 22px;
+    font-weight: 700;
+    color: #1e3a5f;
+    letter-spacing: .02em;
+}
+
+.am-ms-unit { font-size: 12px; font-weight: 400; color: #888; margin-left: 2px; }
+.am-ms-na   { font-size: 16px; color: #bbb; }
+.am-ms-alert { color: #d63638; }
+.am-ms-warn  { color: #c17b00; }
+.am-ms-over  { color: #c0392b; }
+
+/* ===============================================================
+   休日マスタ：ステータスバッジ
+   ============================================================= */
+.hm-status {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.hm-active   { background: #e6f4ea; color: #2c5f2e; border: 1px solid #a8d5a2; }
+.hm-inactive { background: #f0f0f0; color: #888;    border: 1px solid #ccc; }
+
+/* ===============================================================
+   レスポンシブ
+   ============================================================= */
+@media (max-width: 768px) {
+    .am-form-row { flex-direction: column; gap: 14px; }
+    .am-select, .am-input-month { width: 100%; min-width: unset; }
+    .am-btn { width: 100%; justify-content: center; }
+}
