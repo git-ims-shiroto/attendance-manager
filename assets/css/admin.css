@@ -1,8 +1,6 @@
 /* =============================================================
    勤怠管理（統合版） - admin.css
    ============================================================= */
-   勤怠管理 | 事務・地場 - admin.css
-   ============================================================= */
 
 .am-wrap {
     max-width: 1600px;
@@ -274,7 +272,7 @@
     overflow-x: auto;
     border-radius: 6px;
     border: 1px solid #dde3ea;
-    height: 400px;
+    height: 800px;
 }
 
 /* ---- 勤怠メインテーブル ---- */
@@ -346,16 +344,40 @@
 }
 
 /* 列幅 */
-.col-kintai { min-width: 110px; }
-.col-time   { min-width: 70px; }
-.col-min    { min-width: 68px; }
+.col-kintai {
+    min-width: 110px;
+}
+
+.col-time {
+    min-width: 70px;
+}
+
+.col-min {
+    min-width: 68px;
+}
 
 /* 行カラーリング */
-.am-row-sun td { background: #fff5f5 !important; }
-.am-row-sun td .am-dow { color: #d63638; font-weight: 700; }
-.am-row-sat td { background: #f0f5ff !important; }
-.am-row-sat td .am-dow { color: #2e6da4; font-weight: 700; }
-.am-row-off td { color: #aaa; }
+.am-row-sun td {
+    background: #fff5f5 !important;
+}
+
+.am-row-sun td .am-dow {
+    color: #d63638;
+    font-weight: 700;
+}
+
+.am-row-sat td {
+    background: #f0f5ff !important;
+}
+
+.am-row-sat td .am-dow {
+    color: #2e6da4;
+    font-weight: 700;
+}
+
+.am-row-off td {
+    color: #aaa;
+}
 
 /* 残業セル */
 .am-cell-over {
@@ -424,11 +446,11 @@ tr[data-auto="false"] .am-kintai-select {
     transition: transform .2s;
 }
 
-.am-toggle input:checked + .am-toggle-slider {
+.am-toggle input:checked+.am-toggle-slider {
     background: #2e6da4;
 }
 
-.am-toggle input:checked + .am-toggle-slider::before {
+.am-toggle input:checked+.am-toggle-slider::before {
     transform: translateX(16px);
 }
 
@@ -450,7 +472,9 @@ tr[data-auto="false"] .am-kintai-select {
 }
 
 /* 備考 input */
-.col-note { min-width: 120px; }
+.col-note {
+    min-width: 120px;
+}
 
 .am-note-input {
     width: 100%;
@@ -494,7 +518,10 @@ tr[data-auto="false"] .am-kintai-select {
     letter-spacing: .03em;
 }
 
-.am-chip:hover { border-color: #2e6da4; color: #2e6da4; }
+.am-chip:hover {
+    border-color: #2e6da4;
+    color: #2e6da4;
+}
 
 .am-chip.am-chip-active {
     background: #2e6da4;
@@ -518,7 +545,10 @@ tr[data-auto="false"] .am-kintai-select {
     min-width: 800px;
 }
 
-.am-weekly-table thead tr { background: #2c5f2e; color: #fff; }
+.am-weekly-table thead tr {
+    background: #2c5f2e;
+    color: #fff;
+}
 
 .am-weekly-table th {
     padding: 9px 12px;
@@ -529,9 +559,17 @@ tr[data-auto="false"] .am-kintai-select {
     letter-spacing: .02em;
 }
 
-.am-weekly-table tbody tr { background: #fff; }
-.am-weekly-table tbody tr:nth-child(even) { background: #f7fdf7; }
-.am-weekly-table tbody tr:hover { background: #edfaed; }
+.am-weekly-table tbody tr {
+    background: #fff;
+}
+
+.am-weekly-table tbody tr:nth-child(even) {
+    background: #f7fdf7;
+}
+
+.am-weekly-table tbody tr:hover {
+    background: #edfaed;
+}
 
 .am-weekly-table td {
     padding: 8px 12px;
@@ -548,15 +586,45 @@ tr[data-auto="false"] .am-kintai-select {
     color: #1e3a5f;
 }
 
-.wcol-date { min-width: 80px; }
-.wcol-days { min-width: 45px; }
-.wcol-min  { min-width: 72px; }
+.wcol-date {
+    min-width: 80px;
+}
 
-.am-week-carryover td { background: #fffbea !important; color: #7a5200; }
-.am-week-prev-carry td { background: #f0f4ff !important; color: #3a4a7a; font-style: italic; }
-.am-week-prev-carry .wcol-label { color: #2e6da4; font-weight: 700; }
-.am-cell-na { color: #aaa; background: #f5f5f5 !important; font-style: normal; letter-spacing: .05em; }
-.am-cell-confirmed { background: #f0fff0; font-weight: 700; }
+.wcol-days {
+    min-width: 45px;
+}
+
+.wcol-min {
+    min-width: 72px;
+}
+
+.am-week-carryover td {
+    background: #fffbea !important;
+    color: #7a5200;
+}
+
+.am-week-prev-carry td {
+    background: #f0f4ff !important;
+    color: #3a4a7a;
+    font-style: italic;
+}
+
+.am-week-prev-carry .wcol-label {
+    color: #2e6da4;
+    font-weight: 700;
+}
+
+.am-cell-na {
+    color: #aaa;
+    background: #f5f5f5 !important;
+    font-style: normal;
+    letter-spacing: .05em;
+}
+
+.am-cell-confirmed {
+    background: #f0fff0;
+    font-weight: 700;
+}
 
 .am-badge-carryover {
     display: inline-block;
@@ -613,10 +681,24 @@ tr[data-auto="false"] .am-kintai-select {
     font-weight: 700;
 }
 
-.am-alert-warn { background: #fffbe6; border-left: 4px solid #dba617; color: #6b4c00; }
-.am-alert-error { background: #fff0f0; border-left: 4px solid #d63638; color: #7a1a1a; }
+.am-alert-warn {
+    background: #fffbe6;
+    border-left: 4px solid #dba617;
+    color: #6b4c00;
+}
 
-.am-alert .dashicons { font-size: 18px; width: 18px; height: 18px; flex-shrink: 0; }
+.am-alert-error {
+    background: #fff0f0;
+    border-left: 4px solid #d63638;
+    color: #7a1a1a;
+}
+
+.am-alert .dashicons {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+}
 
 /* ===============================================================
    月間サマリ
@@ -637,7 +719,10 @@ tr[data-auto="false"] .am-kintai-select {
     background: #fff;
 }
 
-.am-ms-table thead tr { background: #1e3a5f; color: #fff; }
+.am-ms-table thead tr {
+    background: #1e3a5f;
+    color: #fff;
+}
 
 .am-ms-table thead th {
     padding: 10px 16px;
@@ -648,8 +733,13 @@ tr[data-auto="false"] .am-kintai-select {
     letter-spacing: .03em;
 }
 
-.am-ms-table tbody tr { background: #f9fbfd; }
-.am-ms-table tbody tr:hover { background: #eef4fb; }
+.am-ms-table tbody tr {
+    background: #f9fbfd;
+}
+
+.am-ms-table tbody tr:hover {
+    background: #eef4fb;
+}
 
 .am-ms-table td {
     padding: 14px 20px;
@@ -665,11 +755,29 @@ tr[data-auto="false"] .am-kintai-select {
     letter-spacing: .02em;
 }
 
-.am-ms-unit { font-size: 12px; font-weight: 400; color: #888; margin-left: 2px; }
-.am-ms-na   { font-size: 16px; color: #bbb; }
-.am-ms-alert { color: #d63638; }
-.am-ms-warn  { color: #c17b00; }
-.am-ms-over  { color: #c0392b; }
+.am-ms-unit {
+    font-size: 12px;
+    font-weight: 400;
+    color: #888;
+    margin-left: 2px;
+}
+
+.am-ms-na {
+    font-size: 16px;
+    color: #bbb;
+}
+
+.am-ms-alert {
+    color: #d63638;
+}
+
+.am-ms-warn {
+    color: #c17b00;
+}
+
+.am-ms-over {
+    color: #c0392b;
+}
 
 /* ===============================================================
    休日マスタ：ステータスバッジ
@@ -682,16 +790,37 @@ tr[data-auto="false"] .am-kintai-select {
     font-weight: 700;
 }
 
-.hm-active   { background: #e6f4ea; color: #2c5f2e; border: 1px solid #a8d5a2; }
-.hm-inactive { background: #f0f0f0; color: #888;    border: 1px solid #ccc; }
+.hm-active {
+    background: #e6f4ea;
+    color: #2c5f2e;
+    border: 1px solid #a8d5a2;
+}
+
+.hm-inactive {
+    background: #f0f0f0;
+    color: #888;
+    border: 1px solid #ccc;
+}
 
 /* ===============================================================
    レスポンシブ
    ============================================================= */
 @media (max-width: 768px) {
-    .am-form-row { flex-direction: column; gap: 14px; }
-    .am-select, .am-input-month { width: 100%; min-width: unset; }
-    .am-btn { width: 100%; justify-content: center; }
+    .am-form-row {
+        flex-direction: column;
+        gap: 14px;
+    }
+
+    .am-select,
+    .am-input-month {
+        width: 100%;
+        min-width: unset;
+    }
+
+    .am-btn {
+        width: 100%;
+        justify-content: center;
+    }
 }
 
 /* ===============================================================
