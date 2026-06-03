@@ -1,11 +1,25 @@
 <?php if ( ! defined( 'ABSPATH' ) ) exit; ?>
 
 <div class="wrap am-wrap">
+
     <div class="am-page-header">
-        <h1 class="am-page-title"><span class="dashicons dashicons-calendar-alt"></span> 休日マスタ設定</h1>
-        <p class="am-page-desc">所属ごとの所定休日ルールを設定します。長距離・地場・事務で共通して参照されます。</p>
+        <h1 class="am-page-title">
+            <span class="dashicons dashicons-admin-settings"></span>
+            設定
+        </h1>
+        <p class="am-page-desc">休日ルールの管理と、職種ごとの管理区分（長距離 / 地場・事務）を設定します。</p>
     </div>
 
+    <!-- ============================================================
+         セクション①：休日マスタ設定
+         ============================================================ -->
+    <div class="am-settings-section-heading">
+        <span class="dashicons dashicons-calendar-alt"></span>
+        休日マスタ設定
+    </div>
+    <p class="am-settings-section-desc">所属ごとの所定休日ルールを設定します。長距離・地場・事務で共通して参照されます。</p>
+
+    <!-- ルール追加フォーム -->
     <div class="am-card">
         <div class="am-card-header"><span class="dashicons dashicons-plus-alt"></span> ルールの追加・編集</div>
         <div class="am-card-body">
@@ -43,10 +57,11 @@
         </div>
     </div>
 
+    <!-- 登録済みルール一覧 -->
     <div class="am-card">
         <div class="am-card-header"><span class="dashicons dashicons-list-view"></span> 登録済みルール一覧</div>
         <div class="am-card-body" style="padding:0;">
-            <div class="am-table-wrap" style="border:none;border-radius:0;">
+            <div class="am-table-wrap" style="border:none;border-radius:0;height:auto;">
                 <table class="am-main-table" id="hm-rule-table">
                     <thead>
                         <tr><th>所属</th><th>所定休日（曜日）</th><th>対象週</th><th>状態</th><th>操作</th></tr>
@@ -78,4 +93,37 @@
             </div>
         </div>
     </div>
-</div>
+
+    <!-- ============================================================
+         セクション②：種別管理
+         ============================================================ -->
+    <div class="am-settings-section-heading" style="margin-top:32px;">
+        <span class="dashicons dashicons-groups"></span>
+        種別管理
+    </div>
+    <p class="am-settings-section-desc">職種ごとに「長距離」「地場・事務」どちらの管理表に表示するかを設定します。職種一覧は従業員マスタから自動取得されます。</p>
+
+    <div class="am-card">
+        <div class="am-card-header"><span class="dashicons dashicons-edit"></span> 職種と管理区分の設定</div>
+        <div class="am-card-body" style="padding:0;">
+            <div id="jt-loading" style="padding:24px;text-align:center;color:#888;">読み込み中...</div>
+            <table class="am-main-table" id="jt-table" style="display:none;">
+                <thead>
+                    <tr>
+                        <th style="text-align:left;padding-left:20px;">職種名</th>
+                        <th style="min-width:160px;">長距離</th>
+                        <th style="min-width:160px;">地場・事務</th>
+                        <th style="min-width:80px;">状態</th>
+                    </tr>
+                </thead>
+                <tbody id="jt-tbody"></tbody>
+            </table>
+            <div id="jt-empty" style="display:none;padding:24px;text-align:center;color:#aaa;">
+                従業員マスタに職種が登録されていません。<br>
+                先に employee-manager で職種を登録してください。
+            </div>
+        </div>
+        <div id="jt-message" style="padding:8px 20px;font-size:13px;font-weight:700;display:none;"></div>
+    </div>
+
+</div><!-- /.am-wrap -->
