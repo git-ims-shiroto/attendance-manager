@@ -299,4 +299,104 @@ class AM_DB {
         }
         return self::get_paidleave_summary( $employee_code, $year_month );
     }
+
+    /* ---------------------------------------------------------------
+     * 【種別管理】職種マッピング一覧取得
+     * ------------------------------------------------------------- */
+    public static function get_job_type_mappings() {
+        global $wpdb;
+        $rows = $wpdb->get_results(
+            "SELECT job_type_name, category FROM `{$wpdb->prefix}am_job_type_mapping`",
+            ARRAY_A
+        ) ?: [];
+        $map = [];
+        foreach ( $rows as $r ) {
+            $map[ $r['job_type_name'] ] = $r['category'];
+        }
+        return $map;
+    }
+
+    /* ---------------------------------------------------------------
+     * 【種別管理】職種マッピング保存（UPSERT）
+     * ------------------------------------------------------------- */
+    public static function save_job_type_mapping( $job_type_name, $category ) {
+        global $wpdb;
+        $wpdb->query( $wpdb->prepare(
+            "INSERT INTO `{$wpdb->prefix}am_job_type_mapping` (`job_type_name`, `category`)
+             VALUES (%s, %s)
+             ON DUPLICATE KEY UPDATE `category` = VALUES(`category`), `updated_at` = NOW()",
+            $job_type_name, $category
+        ) );
+        return $wpdb->last_error ? false : true;
+    }
+
+    /* ---------------------------------------------------------------
+     * 【長距離用】職種マッピングベースの社員一覧
+     * 【地場・事務用】職種マッピングベースの社員一覧
+     * category: 'chokyo' or 'jiba'
+     * ------------------------------------------------------------- */
+    public static function get_employees_by_category( $category ) {
+        global $wpdb;
+
+        // マッピング未設定の場合は従来ロジックにフォールバック
+        $mapped_types = $wpdb->get_col( $wpdb->prepare(
+            "SELECT job_type_name FROM `{$wpdb->prefix}am_job_type_mapping` WHERE category = %s",
+            $category
+        ) );
+
+        if ( empty( $mapped_types ) ) {
+            // マッピング未設定時：長距離はkousokuベース、地場はmatベース
+            if ( $category === 'chokyo' ) return self::get_employees_from_kousoku();
+            return self::get_employees_from_mat();
+        }
+
+        $placeholders = implode( ',', array_fill( 0, count( $mapped_types ), '%s' ) );
+
+        if ( $category === 'chokyo' ) {
+            // 長距離：emp_master の職種で絞り込み → crew_code で取得
+            $rows = $wpdb->get_results(
+                $wpdb->prepare(
+                    "SELECT
+                        m.crew_code,
+                        COALESCE( m.name,          '（未登録）' ) AS name,
+                        COALESCE( m.employee_code, '―'          ) AS employee_code,
+                        COALESCE( a.id,            0            ) AS affiliation_id,
+                        COALESCE( a.name,          '未所属'     ) AS affiliation_name
+                     FROM `{$wpdb->prefix}emp_master` m
+                     LEFT JOIN `{$wpdb->prefix}mst_affiliation` a ON a.id = m.affiliation_id
+                     LEFT JOIN `{$wpdb->prefix}mst_job_type` jt ON jt.id = m.job_type_id
+                     WHERE jt.name IN ({$placeholders})
+                       AND m.is_active = 1
+                       AND m.crew_code IS NOT NULL AND m.crew_code <> ''
+                     ORDER BY CAST( COALESCE( NULLIF( m.employee_code, '―' ), '99999' ) AS UNSIGNED ) ASC",
+                    ...$mapped_types
+                ),
+                ARRAY_A
+            );
+        } else {
+            // 地場・事務：emp_master の職種で絞り込み → employee_code で取得
+            $rows = $wpdb->get_results(
+                $wpdb->prepare(
+                    "SELECT
+                        m.employee_code,
+                        COALESCE( m.name, '（未登録）' ) AS name,
+                        COALESCE( a.id,   0            ) AS affiliation_id,
+                        COALESCE( a.name, '未所属'     ) AS affiliation_name
+                     FROM `{$wpdb->prefix}emp_master` m
+                     LEFT JOIN `{$wpdb->prefix}mst_affiliation` a ON a.id = m.affiliation_id
+                     LEFT JOIN `{$wpdb->prefix}mst_job_type` jt ON jt.id = m.job_type_id
+                     WHERE jt.name IN ({$placeholders})
+                       AND m.is_active = 1
+                     ORDER BY CAST( COALESCE( NULLIF( m.employee_code, '' ), '99999' ) AS UNSIGNED ) ASC",
+                    ...$mapped_types
+                ),
+                ARRAY_A
+            );
+        }
+
+        return [
+            'employees' => is_array( $rows ) ? $rows : [],
+            'error'     => $wpdb->last_error,
+        ];
+    }
 }
