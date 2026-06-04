@@ -78,6 +78,7 @@ class AM_Ajax {
 
         $emp_info     = AM_DB::get_emp_info_by_crew( $crew_code );
         $monthly_rows = AM_Compute_Chokyo::get_monthly_rows( $crew_code, $year_month, $emp_info['name'] );
+        $alerts = $monthly_rows[0]['_alerts'] ?? [];
         $rows = [];
         foreach ( $monthly_rows as $r ) {
             $rows[] = [
@@ -96,7 +97,7 @@ class AM_Ajax {
                 'overtime_min' => AM_Compute_Chokyo::format_min( $r['overtime_min'] ),
             ];
         }
-        wp_send_json_success( $rows );
+        wp_send_json_success( [ 'rows' => $rows, 'alerts' => $alerts ] );
     }
 
     public static function chokyo_get_weekly_rows() {

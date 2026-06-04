@@ -39,7 +39,31 @@
     function refreshDailyRows(params, action) {
         $.post(amData.ajaxUrl, $.extend({ action: action, nonce: amData.nonce }, params), function (res) {
             if (!res.success) return;
-            $.each(res.data, function (_, r) {
+
+            // 警告アラートを更新
+            var alerts = res.data.alerts || [];
+            var $alertWrap = $('.am-alerts');
+            if (alerts.length) {
+                var html = '';
+                $.each(alerts, function (_, a) {
+                    var cls = a.type === 'error' ? 'am-alert-error' : 'am-alert-warn';
+                    var icon = a.type === 'error' ? 'dashicons-warning' : 'dashicons-info';
+                    html += '<div class="am-alert ' + cls + '">'
+                        + '<span class="dashicons ' + icon + '"></span>'
+                        + $('<span>').text(a.message).html()
+                        + '</div>';
+                });
+                if ($alertWrap.length) {
+                    $alertWrap.html(html).show();
+                } else {
+                    $('.am-info-table').after('<div class="am-alerts">' + html + '</div>');
+                }
+            } else {
+                $alertWrap.empty().hide();
+            }
+
+            // 日次行を更新
+            $.each(res.data.rows, function (_, r) {
                 var $tr = $('tbody tr[data-date="' + r.date + '"]');
                 if (!$tr.length) return;
 
