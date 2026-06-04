@@ -82,6 +82,9 @@ class AM_Ajax {
         foreach ( $monthly_rows as $r ) {
             $rows[] = [
                 'date'         => $r['date'],
+                'kintai_type'  => $r['default_kintai'] ?? '',
+                'houtei_kinmu' => ! empty( $r['houtei_kinmu'] ),
+                'shitei_kinmu' => ! empty( $r['shitei_kinmu'] ),
                 'start_time'   => $r['start_time']      ?? '',
                 'end_time'     => $r['end_time']         ?? '',
                 'kousoku_min'  => AM_Compute_Chokyo::format_min( $r['kousoku_min'] ),

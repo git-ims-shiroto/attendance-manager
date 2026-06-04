@@ -42,6 +42,24 @@
             $.each(res.data, function (_, r) {
                 var $tr = $('tbody tr[data-date="' + r.date + '"]');
                 if (!$tr.length) return;
+
+                // 勤怠種別セレクトを更新
+                if (r.kintai_type !== undefined) {
+                    $tr.find('.am-kintai-select').val(r.kintai_type);
+                    $tr.attr('data-auto', 'true');
+                }
+
+                // 法定休出勤・所定休出勤バッジを更新
+                $tr.find('.am-badge-houtei-kinmu').remove();
+                $tr.find('.am-badge-shitei-kinmu').remove();
+                if (r.houtei_kinmu) {
+                    $tr.find('.am-date-row').after('<span class="am-badge-houtei-kinmu">法定休出勤</span>');
+                }
+                if (r.shitei_kinmu) {
+                    $tr.find('.am-date-row').after('<span class="am-badge-shitei-kinmu">所定休出勤</span>');
+                }
+
+                // 時間データを更新
                 $tr.find('td:nth-child(3)').text(r.start_time);
                 $tr.find('td:nth-child(4)').text(r.end_time);
                 $tr.find('td:nth-child(5)').text(r.kousoku_min);
