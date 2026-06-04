@@ -154,12 +154,15 @@ class AM_Compute_Chokyo {
             }
 
             $is_shitei = self::is_shitei_holiday( $date_str, $dow_num, $shitei_rules );
-            $default_kintai = $k !== null ? '出勤' : ( $is_sun ? '法定休' : ( $is_shitei ? '所定休' : '' ) );
+
+            // has_data: kousoku_log または tenrec_daily どちらかにデータがあれば true
+            $has_data = ( $k !== null ) || ( $t !== null );
+            $default_kintai = $has_data ? '出勤' : ( $is_sun ? '法定休' : ( $is_shitei ? '所定休' : '' ) );
 
             $rows[] = [
                 'date' => $date_str, 'dow' => $dow, 'dow_num' => $dow_num,
                 'is_sun' => $is_sun, 'is_sat' => $is_sat, 'is_shitei_holiday' => $is_shitei,
-                'has_data' => $k !== null, 'default_kintai' => $default_kintai,
+                'has_data' => $has_data, 'default_kintai' => $default_kintai,
                 'furikae_label' => '', 'is_manual' => false, 'jiba' => false,
                 'hayatai_min' => 0, 'note' => '',
                 'start_time' => $start_time, 'end_time' => $end_time,
