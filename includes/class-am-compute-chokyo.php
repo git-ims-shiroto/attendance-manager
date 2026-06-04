@@ -225,6 +225,16 @@ class AM_Compute_Chokyo {
             }
             unset( $r );
 
+            // パス2補完：保存データが空の行に自動判定を追加
+            // （一度保存ボタンを押したが kintai_type が未設定の行を補完）
+            foreach ( $rows as &$r ) {
+                if ( $r['default_kintai'] !== '' ) continue; // 設定済みはスキップ
+                if ( $r['has_data'] )          { $r['default_kintai'] = '出勤';   continue; }
+                if ( $r['is_sun'] )            { $r['default_kintai'] = '法定休'; continue; }
+                if ( $r['is_shitei_holiday'] ) { $r['default_kintai'] = '所定休'; }
+            }
+            unset( $r );
+
             $rows = self::check_alerts_only( $rows );
         } else {
             $rows = self::apply_auto_kintai( $rows );
