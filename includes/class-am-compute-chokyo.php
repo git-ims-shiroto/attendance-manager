@@ -86,7 +86,11 @@ class AM_Compute_Chokyo {
         $affiliation_id = AM_DB::get_affiliation_id_by_crew( $crew_code );
         $shitei_rules   = ( AM_DB::get_active_rules_by_affiliation() )[ $affiliation_id ] ?? [];
         $saved_kintai   = AM_DB::get_chokyo_saved_kintai( $crew_code, $year_month );
-        $has_saved      = ! empty( $saved_kintai );
+        // kintai_type が空でない行が1件以上ある場合のみ has_saved = true
+        // 「保存済みだが全行空」の場合は apply_auto_kintai を実行させる
+        $has_saved = ! empty( array_filter( $saved_kintai, function( $r ) {
+            return $r['kintai_type'] !== '';
+        } ) );
 
         $dow_ja = [ 'Sun'=>'日','Mon'=>'月','Tue'=>'火','Wed'=>'水','Thu'=>'木','Fri'=>'金','Sat'=>'土' ];
         $rows   = [];
