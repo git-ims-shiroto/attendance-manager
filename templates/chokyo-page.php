@@ -150,8 +150,14 @@ $page_url = admin_url( 'admin.php?page=attendance-manager' );
                                 <?php if ( ! empty( $row['kyuujitsu_kinmu'] ) ) : ?>
                                     <span class="am-badge-kyukin">休日出勤</span>
                                 <?php endif; ?>
-                                <?php if ( ! empty( $row['furikae_label'] ) && ! $row['is_manual'] ) : ?>
-                                    <span class="am-badge-furikae"><?php echo esc_html( $row['furikae_label'] ); ?></span>
+                                <?php
+                                $is_furikae_kintai = in_array( $kintai_val, [ '法定振替休', '所定振替休' ], true );
+                                if ( $is_furikae_kintai ) :
+                                    $badge_label = ! empty( $row['furikae_label'] )
+                                        ? $row['furikae_label']
+                                        : '振替休日';
+                                ?>
+                                    <span class="am-badge-furikae"><?php echo esc_html( $badge_label ); ?></span>
                                 <?php endif; ?>
                             </td>
                             <td class="col-kintai">

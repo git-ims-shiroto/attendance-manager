@@ -116,9 +116,25 @@
 
     $(document).on('change', '.am-kintai-select', function () {
         var $tr = $(this).closest('tr');
+        var val = $(this).val();
         $tr.attr('data-auto', 'false');
-        // 手動変更時は振替バッジを即時非表示
-        $tr.find('.am-badge-furikae').hide();
+
+        var $badge = $tr.find('.am-badge-furikae');
+
+        if (val === '法定振替休' || val === '所定振替休') {
+            // 振替休系 → バッジ表示（furikaeラベルがあればそれを使用）
+            var label = $tr.data('furikae') || '振替休日';
+            if ($badge.length) {
+                $badge.text(label).show();
+            } else {
+                $tr.find('.am-date-row').after(
+                    '<span class="am-badge-furikae">' + $('<span>').text(label).html() + '</span>'
+                );
+            }
+        } else {
+            // 振替休以外 → バッジ非表示
+            $badge.hide();
+        }
     });
 
     /* ================================================================
