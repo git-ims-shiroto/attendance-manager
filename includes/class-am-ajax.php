@@ -302,4 +302,55 @@ class AM_Ajax {
         );
         wp_send_json_success();
     }
+
+    /* ===============================================================
+       種別管理 AJAX
+       ============================================================= */
+
+    /**
+     * 職種一覧＋現在のマッピングを返す
+     */
+    public static function jobtype_get() {
+        check_ajax_referer( 'am_nonce', 'nonce' );
+        if ( ! current_user_can( 'manage_options' ) ) wp_die( -1 );
+
+        $job_types = function_exists( 'emp_get_job_types' ) ? emp_get_job_types() : [];
+        $mappings  = AM_DB::get_job_type_mappings();
+
+        $result = [];
+        foreach ( $job_types as $jt ) {
+            $name = $jt->name ?? '';
+            $result[] = [
+                'name'     => $name,
+                'category' => $mappings[ $name ] ?? '',  // 未設定は空文字
+            ];
+        }
+        wp_send_json_success( $result );
+    }
+
+    /**
+     * 職種のマッピングを保存
+     * POST: job_type_name, category（'chokyo' or 'jiba'）
+     */
+    public static function jobtype_save() {
+        check_ajax_referer( 'am_nonce', 'nonce' );
+        if ( ! current_user_can( 'manage_options' ) ) wp_die( -1 );
+
+        $job_type_name = sanitize_text_field( wp_unslash( $_POST['job_type_name'] ?? '' ) );
+        $category      = sanitize_text_field( wp_unslash( $_POST['category']      ?? '' ) );
+
+        if ( $job_type_name === '' ) {
+            wp_send_json_error( [ 'message' => '職種名が空です' ] );
+        }
+        if ( ! in_array( $category, [ 'chokyo', 'jiba' ], true ) ) {
+            wp_send_json_error( [ 'message' => '区分が不正です' ] );
+        }
+
+        $result = AM_DB::save_job_type_mapping( $job_type_name, $category );
+        if ( $result ) {
+            wp_send_json_success();
+        } else {
+            wp_send_json_error( [ 'message' => '保存に失敗しました' ] );
+        }
+    }
 }

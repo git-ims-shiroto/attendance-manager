@@ -221,7 +221,7 @@
     /* ================================================================
        休日マスタページ
        ================================================================ */
-    if (currentPage === 'attendance-manager-holiday') {
+    if (currentPage === 'attendance-manager-settings') {
 
         var _editingId = 0;
 
@@ -295,6 +295,79 @@
             if (!window.confirm('このルールを削除しますか？')) return;
             $.post(amData.ajaxUrl, { action: 'am_holiday_delete_rule', nonce: amData.nonce, id: parseInt($(this).data('id')) }, function (res) { if (res.success) hmReloadTable(); });
         });
+
+        /* ================================================================
+           種別管理
+           ================================================================ */
+
+        function jtLoad() {
+            $.post(amData.ajaxUrl, { action: 'am_jobtype_get', nonce: amData.nonce }, function (res) {
+                $('#jt-loading').hide();
+                if (!res.success || !res.data.length) {
+                    $('#jt-empty').show();
+                    return;
+                }
+
+                var $tbody = $('#jt-tbody').empty();
+                $.each(res.data, function (i, jt) {
+                    var isChokyo = jt.category === 'chokyo';
+                    var isJiba   = jt.category === 'jiba';
+                    var unset    = jt.category === '';
+
+                    var $tr = $(
+                        '<tr data-name="' + $('<span>').text(jt.name).html() + '">' +
+                        '<td style="text-align:left;padding-left:20px;font-weight:600;">' + $('<span>').text(jt.name).html() + '</td>' +
+                        '<td style="text-align:center;">' +
+                            '<label style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;">' +
+                            '<input type="radio" name="jt_cat_' + i + '" value="chokyo" ' + (isChokyo ? 'checked' : '') + '> 長距離' +
+                            '</label></td>' +
+                        '<td style="text-align:center;">' +
+                            '<label style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;">' +
+                            '<input type="radio" name="jt_cat_' + i + '" value="jiba" ' + (isJiba ? 'checked' : '') + '> 地場・事務' +
+                            '</label></td>' +
+                        '<td style="text-align:center;">' +
+                            '<span class="jt-status ' + (unset ? 'jt-unset' : 'jt-set') + '">' +
+                            (unset ? '未設定' : '設定済') + '</span>' +
+                        '</td>' +
+                        '</tr>'
+                    );
+                    $tbody.append($tr);
+                });
+
+                $('#jt-table').show();
+            });
+        }
+
+        // ラジオ変更 → 即時保存
+        $(document).on('change', '#jt-tbody input[type="radio"]', function () {
+            var $radio    = $(this);
+            var jobName   = $radio.closest('tr').data('name');
+            var category  = $radio.val();
+            var $msg      = $('#jt-message');
+
+            $.post(amData.ajaxUrl, {
+                action:        'am_jobtype_save',
+                nonce:         amData.nonce,
+                job_type_name: jobName,
+                category:      category,
+            }, function (res) {
+                if (res.success) {
+                    // ステータスバッジを更新
+                    var $span = $radio.closest('tr').find('.jt-status');
+                    $span.text('設定済').removeClass('jt-unset').addClass('jt-set');
+                    $msg.text('「' + jobName + '」を保存しました')
+                        .css({ color: '#2c5f2e', background: '#f0fff0', borderLeft: '4px solid #2c5f2e', padding: '8px 20px' })
+                        .show();
+                } else {
+                    $msg.text('保存に失敗しました：' + (res.data.message || ''))
+                        .css({ color: '#7a1a1a', background: '#fff0f0', borderLeft: '4px solid #d63638', padding: '8px 20px' })
+                        .show();
+                }
+                setTimeout(function () { $msg.fadeOut(); }, 3000);
+            });
+        });
+
+        jtLoad();
     }
 
 })(jQuery);
