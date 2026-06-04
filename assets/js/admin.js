@@ -39,9 +39,51 @@
     function refreshDailyRows(params, action) {
         $.post(amData.ajaxUrl, $.extend({ action: action, nonce: amData.nonce }, params), function (res) {
             if (!res.success) return;
-            $.each(res.data, function (_, r) {
+
+            // 警告アラートを更新
+            var alerts = res.data.alerts || [];
+            var $alertWrap = $('.am-alerts');
+            if (alerts.length) {
+                var html = '';
+                $.each(alerts, function (_, a) {
+                    var cls = a.type === 'error' ? 'am-alert-error' : 'am-alert-warn';
+                    var icon = a.type === 'error' ? 'dashicons-warning' : 'dashicons-info';
+                    html += '<div class="am-alert ' + cls + '">'
+                        + '<span class="dashicons ' + icon + '"></span>'
+                        + $('<span>').text(a.message).html()
+                        + '</div>';
+                });
+                if ($alertWrap.length) {
+                    $alertWrap.html(html).show();
+                } else {
+                    $('.am-info-table').after('<div class="am-alerts">' + html + '</div>');
+                }
+            } else {
+                $alertWrap.empty().hide();
+            }
+
+            // 日次行を更新
+            $.each(res.data.rows, function (_, r) {
                 var $tr = $('tbody tr[data-date="' + r.date + '"]');
                 if (!$tr.length) return;
+
+                // 勤怠種別セレクトを更新
+                if (r.kintai_type !== undefined) {
+                    $tr.find('.am-kintai-select').val(r.kintai_type);
+                    $tr.attr('data-auto', 'true');
+                }
+
+                // 法定休出勤・所定休出勤バッジを更新
+                $tr.find('.am-badge-houtei-kinmu').remove();
+                $tr.find('.am-badge-shitei-kinmu').remove();
+                if (r.houtei_kinmu) {
+                    $tr.find('.am-date-row').after('<span class="am-badge-houtei-kinmu">法定休出勤</span>');
+                }
+                if (r.shitei_kinmu) {
+                    $tr.find('.am-date-row').after('<span class="am-badge-shitei-kinmu">所定休出勤</span>');
+                }
+
+                // 時間データを更新
                 $tr.find('td:nth-child(3)').text(r.start_time);
                 $tr.find('td:nth-child(4)').text(r.end_time);
                 $tr.find('td:nth-child(5)').text(r.kousoku_min);
@@ -58,7 +100,7 @@
     function refreshWeeklyRows(params, action) {
         $.post(amData.ajaxUrl, $.extend({ action: action, nonce: amData.nonce }, params), function (res) {
             if (!res.success) return;
-            var $rows    = $('.am-weekly-table tbody tr');
+            var $rows = $('.am-weekly-table tbody tr');
             var dataRows = res.data.filter(function (r) { return r.label !== '__total__'; });
             var totalRow = res.data.find(function (r) { return r.label === '__total__'; });
             dataRows.forEach(function (r, i) {
@@ -105,7 +147,7 @@
         var affil = $(this).data('affil');
         $('.am-chip').removeClass('am-chip-active');
         $(this).addClass('am-chip-active');
-        var $select  = $('.am-select[name="am_crew"], .am-select[name="am_emp"]');
+        var $select = $('.am-select[name="am_crew"], .am-select[name="am_emp"]');
         var $options = $select.find('option[data-affil]');
         if (affil === 'all') { $options.show(); }
         else { $options.each(function () { $(this).data('affil') == affil ? $(this).show() : $(this).hide(); }); }
@@ -128,21 +170,21 @@
         $('#am-select-month').on('change input', function () { updateBtnState('#am-select-crew', '#am-btn-open'); });
 
         $(document).on('click', '#am-btn-save', function () {
-            var $btn      = $(this);
-            var crewCode  = $btn.data('crew');
-            var month     = $btn.data('month');
-            var $msg      = $('#am-save-message');
+            var $btn = $(this);
+            var crewCode = $btn.data('crew');
+            var month = $btn.data('month');
+            var $msg = $('#am-save-message');
             var rows = [];
             $('tbody tr[data-date]').each(function () {
                 var $tr = $(this);
                 rows.push({
-                    date:          $tr.data('date'),
-                    kintai_type:   $tr.find('.am-kintai-select').val() || '',
+                    date: $tr.data('date'),
+                    kintai_type: $tr.find('.am-kintai-select').val() || '',
                     furikae_label: $tr.data('furikae') || '',
-                    is_manual:     $tr.attr('data-auto') === 'false' ? 1 : 0,
-                    jiba:          $tr.find('.am-jiba-input').is(':checked') ? 1 : 0,
-                    hayatai_min:   parseMin($tr.find('.am-hayatai-input').val()),
-                    note:          $tr.find('.am-note-input').val() || '',
+                    is_manual: $tr.attr('data-auto') === 'false' ? 1 : 0,
+                    jiba: $tr.find('.am-jiba-input').is(':checked') ? 1 : 0,
+                    hayatai_min: parseMin($tr.find('.am-hayatai-input').val()),
+                    note: $tr.find('.am-note-input').val() || '',
                 });
             });
             $btn.prop('disabled', true).text('保存中...');
@@ -178,21 +220,21 @@
         $('#am-select-month-jiba').on('change input', function () { updateBtnState('#am-select-emp', '#am-btn-open-jiba'); });
 
         $(document).on('click', '#am-btn-save-jiba', function () {
-            var $btn      = $(this);
-            var empCode   = $btn.data('emp');
-            var month     = $btn.data('month');
-            var $msg      = $('#am-save-message-jiba');
+            var $btn = $(this);
+            var empCode = $btn.data('emp');
+            var month = $btn.data('month');
+            var $msg = $('#am-save-message-jiba');
             var rows = [];
             $('tbody tr[data-date]').each(function () {
                 var $tr = $(this);
                 rows.push({
-                    date:          $tr.data('date'),
-                    kintai_type:   $tr.find('.am-kintai-select').val() || '',
+                    date: $tr.data('date'),
+                    kintai_type: $tr.find('.am-kintai-select').val() || '',
                     furikae_label: $tr.data('furikae') || '',
-                    is_manual:     $tr.attr('data-auto') === 'false' ? 1 : 0,
-                    chokyo:        $tr.find('.am-chokyo-input').is(':checked') ? 1 : 0,
-                    hayatai_min:   parseMin($tr.find('.am-hayatai-input').val()),
-                    note:          $tr.find('.am-note-input').val() || '',
+                    is_manual: $tr.attr('data-auto') === 'false' ? 1 : 0,
+                    chokyo: $tr.find('.am-chokyo-input').is(':checked') ? 1 : 0,
+                    hayatai_min: parseMin($tr.find('.am-hayatai-input').val()),
+                    note: $tr.find('.am-note-input').val() || '',
                 });
             });
             $btn.prop('disabled', true).text('保存中...');
@@ -234,7 +276,7 @@
         function hmReloadTable() {
             $.post(amData.ajaxUrl, { action: 'am_holiday_get_rules', nonce: amData.nonce }, function (res) {
                 if (!res.success) return;
-                var $tbody    = $('#hm-rule-tbody');
+                var $tbody = $('#hm-rule-tbody');
                 var dowLabels = ['日', '月', '火', '水', '木', '金', '土'];
                 $tbody.empty();
                 if (!res.data.length) {
@@ -242,7 +284,7 @@
                     return;
                 }
                 $.each(res.data, function (i, r) {
-                    var weeks   = r.week_numbers.split(',').join('・');
+                    var weeks = r.week_numbers.split(',').join('・');
                     var bgToggle = r.is_active == 1 ? '#aaa' : '#2c5f2e';
                     $tbody.append(
                         '<tr data-id="' + r.id + '">' +
@@ -262,8 +304,8 @@
 
         $(document).on('click', '#hm-btn-save', function () {
             var affilId = $('#hm-affiliation').val();
-            var dow     = $('#hm-dow').val();
-            var weeks   = $('#hm-weeks').val().trim();
+            var dow = $('#hm-dow').val();
+            var weeks = $('#hm-weeks').val().trim();
             if (!affilId || weeks === '') { hmShowMessage('所属と対象週は必須です', true); return; }
             $.post(amData.ajaxUrl, { action: 'am_holiday_save_rule', nonce: amData.nonce, id: _editingId, affiliation_id: affilId, day_of_week: dow, week_numbers: weeks }, function (res) {
                 if (res.success) { hmShowMessage('保存しました', false); hmResetForm(); hmReloadTable(); }
@@ -311,23 +353,23 @@
                 var $tbody = $('#jt-tbody').empty();
                 $.each(res.data, function (i, jt) {
                     var isChokyo = jt.category === 'chokyo';
-                    var isJiba   = jt.category === 'jiba';
-                    var unset    = jt.category === '';
+                    var isJiba = jt.category === 'jiba';
+                    var unset = jt.category === '';
 
                     var $tr = $(
                         '<tr data-name="' + $('<span>').text(jt.name).html() + '">' +
                         '<td style="text-align:left;padding-left:20px;font-weight:600;">' + $('<span>').text(jt.name).html() + '</td>' +
                         '<td style="text-align:center;">' +
-                            '<label style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;">' +
-                            '<input type="radio" name="jt_cat_' + i + '" value="chokyo" ' + (isChokyo ? 'checked' : '') + '> 長距離' +
-                            '</label></td>' +
+                        '<label style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;">' +
+                        '<input type="radio" name="jt_cat_' + i + '" value="chokyo" ' + (isChokyo ? 'checked' : '') + '> 長距離' +
+                        '</label></td>' +
                         '<td style="text-align:center;">' +
-                            '<label style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;">' +
-                            '<input type="radio" name="jt_cat_' + i + '" value="jiba" ' + (isJiba ? 'checked' : '') + '> 地場・事務' +
-                            '</label></td>' +
+                        '<label style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;">' +
+                        '<input type="radio" name="jt_cat_' + i + '" value="jiba" ' + (isJiba ? 'checked' : '') + '> 地場・事務' +
+                        '</label></td>' +
                         '<td style="text-align:center;">' +
-                            '<span class="jt-status ' + (unset ? 'jt-unset' : 'jt-set') + '">' +
-                            (unset ? '未設定' : '設定済') + '</span>' +
+                        '<span class="jt-status ' + (unset ? 'jt-unset' : 'jt-set') + '">' +
+                        (unset ? '未設定' : '設定済') + '</span>' +
                         '</td>' +
                         '</tr>'
                     );
@@ -340,16 +382,16 @@
 
         // ラジオ変更 → 即時保存
         $(document).on('change', '#jt-tbody input[type="radio"]', function () {
-            var $radio    = $(this);
-            var jobName   = $radio.closest('tr').data('name');
-            var category  = $radio.val();
-            var $msg      = $('#jt-message');
+            var $radio = $(this);
+            var jobName = $radio.closest('tr').data('name');
+            var category = $radio.val();
+            var $msg = $('#jt-message');
 
             $.post(amData.ajaxUrl, {
-                action:        'am_jobtype_save',
-                nonce:         amData.nonce,
+                action: 'am_jobtype_save',
+                nonce: amData.nonce,
                 job_type_name: jobName,
-                category:      category,
+                category: category,
             }, function (res) {
                 if (res.success) {
                     // ステータスバッジを更新
