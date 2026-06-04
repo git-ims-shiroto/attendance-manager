@@ -153,15 +153,6 @@ $page_url = admin_url( 'admin.php?page=attendance-manager' );
                                 <?php if ( ! empty( $row['shitei_kinmu'] ) ) : ?>
                                     <span class="am-badge-shitei-kinmu">所定休出勤</span>
                                 <?php endif; ?>
-                                <?php
-                                $is_furikae_kintai = in_array( $kintai_val, [ '法定振替休', '所定振替休' ], true );
-                                if ( $is_furikae_kintai ) :
-                                    $badge_label = ! empty( $row['furikae_label'] )
-                                        ? $row['furikae_label']
-                                        : '振替休日';
-                                ?>
-                                    <span class="am-badge-furikae"><?php echo esc_html( $badge_label ); ?></span>
-                                <?php endif; ?>
                             </td>
                             <td class="col-kintai">
                                 <select class="am-kintai-select">
