@@ -114,60 +114,8 @@
         updateBtnState('#am-select-crew, #am-select-emp', '#am-btn-open, #am-btn-open-jiba');
     });
 
-    /* ---- 振替元日付を画面上から探す ---- */
-    function findFurikaeSource($tr, kintaiType) {
-        // data-furikae に値があればそれを優先
-        var existing = $tr.data('furikae') || '';
-        if (existing) return existing;
-
-        var $allRows = $('tbody tr[data-date]');
-        var idx = $allRows.index($tr);
-
-        if (kintaiType === '法定振替休') {
-            // 直前の日曜出勤行を探す
-            for (var i = idx - 1; i >= 0; i--) {
-                var $prev = $allRows.eq(i);
-                if ($prev.hasClass('am-row-sun') &&
-                    $prev.find('.am-kintai-select').val() === '出勤') {
-                    var date = $prev.data('date'); // YYYY-MM-DD
-                    var md = date.substring(5).replace('-', '/'); // MM/DD
-                    return md + '(日)の振替';
-                }
-            }
-        } else if (kintaiType === '所定振替休') {
-            // 直前の所定休日出勤行を探す
-            for (var i = idx - 1; i >= 0; i--) {
-                var $prev = $allRows.eq(i);
-                if ($prev.find('.am-kintai-select').val() === '出勤' &&
-                    !$prev.hasClass('am-row-sun')) {
-                    var date = $prev.data('date');
-                    var md = date.substring(5).replace('-', '/');
-                    return md + 'の振替';
-                }
-            }
-        }
-        return '振替休日';
-    }
-
     $(document).on('change', '.am-kintai-select', function () {
-        var $tr = $(this).closest('tr');
-        var val = $(this).val();
-        $tr.attr('data-auto', 'false');
-
-        var $badge = $tr.find('.am-badge-furikae');
-
-        if (val === '法定振替休' || val === '所定振替休') {
-            var label = findFurikaeSource($tr, val);
-            if ($badge.length) {
-                $badge.text(label).show();
-            } else {
-                $tr.find('.am-date-row').after(
-                    '<span class="am-badge-furikae">' + $('<span>').text(label).html() + '</span>'
-                );
-            }
-        } else {
-            $badge.hide();
-        }
+        $(this).closest('tr').attr('data-auto', 'false');
     });
 
     /* ================================================================
