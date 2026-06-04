@@ -147,7 +147,12 @@ $page_url = admin_url( 'admin.php?page=attendance-manager' );
                                     <?php echo esc_html( substr( $row['date'], 5 ) ); ?>
                                     <span class="am-dow"><?php echo esc_html( $row['dow'] ); ?></span>
                                 </span>
-                                <?php if ( ! empty( $row['kyuujitsu_kinmu'] ) ) : ?><span class="am-badge-kyukin">休日出勤</span><?php endif; ?>
+                                <?php if ( ! empty( $row['kyuujitsu_kinmu'] ) ) : ?>
+                                    <span class="am-badge-kyukin">休日出勤</span>
+                                <?php endif; ?>
+                                <?php if ( ! empty( $row['furikae_label'] ) && ! $row['is_manual'] ) : ?>
+                                    <span class="am-badge-furikae"><?php echo esc_html( $row['furikae_label'] ); ?></span>
+                                <?php endif; ?>
                             </td>
                             <td class="col-kintai">
                                 <select class="am-kintai-select">

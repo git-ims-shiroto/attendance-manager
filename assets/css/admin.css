@@ -272,7 +272,7 @@
     overflow-x: auto;
     border-radius: 6px;
     border: 1px solid #dde3ea;
-    height: 800px;
+    height: 400px;
 }
 
 /* ---- 勤怠メインテーブル ---- */
@@ -874,4 +874,17 @@ tr[data-auto="false"] .am-kintai-select {
     background: #fff8e1;
     color: #7a5200;
     border: 1px solid #ffe082;
+}
+
+/* ===============================================================
+   振替バッジ（自動割当時のみ表示）
+   ============================================================= */
+.am-badge-furikae {
+    display: block;
+    font-size: 10px;
+    font-weight: 700;
+    color: #c0392b;
+    margin-top: 2px;
+    white-space: nowrap;
+    letter-spacing: .02em;
 }

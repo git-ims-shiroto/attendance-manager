@@ -263,35 +263,66 @@ class AM_Compute_Chokyo {
 
     public static function apply_auto_kintai( $rows ) {
         $warnings = [];
+
+        // ① 所定休 2日超チェック
+        // ※ 超過分は '' に戻すが、is_shitei_holiday フラグは保持する
         $shitei_count = 0;
         foreach ( $rows as &$r ) {
-            if ( $r['default_kintai'] === '所定休' ) { $shitei_count++; if ( $shitei_count > 2 ) $r['default_kintai'] = ''; }
+            if ( $r['default_kintai'] === '所定休' ) {
+                $shitei_count++;
+                if ( $shitei_count > 2 ) $r['default_kintai'] = '';
+            }
         }
         unset( $r );
+
+        // 振替先候補の判定ヘルパー
+        // 条件：勤怠種別未設定 かつ データなし かつ 日曜でない かつ 所定休日でない
+        $is_furikae_candidate = function( $row ) {
+            return $row['default_kintai'] === ''
+                && ! $row['has_data']
+                && ! $row['is_sun']
+                && ! $row['is_shitei_holiday'];
+        };
+
+        // ② 法定振替休割当（日曜出勤の場合）
         foreach ( $rows as $i => $r ) {
             if ( $r['is_sun'] && $r['has_data'] && $r['default_kintai'] === '出勤' ) {
                 $assigned = false;
                 for ( $j = $i + 1; $j < count( $rows ); $j++ ) {
-                    if ( $rows[$j]['default_kintai'] === '' && ! $rows[$j]['has_data'] ) {
+                    if ( $is_furikae_candidate( $rows[$j] ) ) {
                         $rows[$j]['default_kintai'] = '法定振替休';
                         $rows[$j]['furikae_label']  = date( 'm/d', strtotime( $r['date'] ) ) . '(日)の振替';
-                        $assigned = true; break;
+                        $assigned = true;
+                        break;
                     }
                 }
-                if ( ! $assigned ) $warnings[] = [ 'type' => 'error', 'message' => date( 'm/d', strtotime( $r['date'] ) ) . '(日)の振替休を割り当てられる日がありません' ];
+                if ( ! $assigned ) {
+                    $warnings[] = [
+                        'type'    => 'error',
+                        'message' => date( 'm/d', strtotime( $r['date'] ) ) . '(日)の振替休を割り当てられる日がありません',
+                    ];
+                }
             }
         }
+
+        // ③ 所定振替休割当（所定休日出勤の場合）
         foreach ( $rows as $i => $r ) {
             if ( $r['is_shitei_holiday'] && $r['has_data'] && $r['default_kintai'] === '出勤' ) {
                 $assigned = false;
                 for ( $j = $i + 1; $j < count( $rows ); $j++ ) {
-                    if ( $rows[$j]['default_kintai'] === '' && ! $rows[$j]['has_data'] ) {
+                    if ( $is_furikae_candidate( $rows[$j] ) ) {
                         $rows[$j]['default_kintai'] = '所定振替休';
                         $rows[$j]['furikae_label']  = date( 'm/d', strtotime( $r['date'] ) ) . 'の振替';
-                        $assigned = true; break;
+                        $assigned = true;
+                        break;
                     }
                 }
-                if ( ! $assigned ) $warnings[] = [ 'type' => 'error', 'message' => date( 'm/d', strtotime( $r['date'] ) ) . 'の振替休を割り当てられる日がありません' ];
+                if ( ! $assigned ) {
+                    $warnings[] = [
+                        'type'    => 'error',
+                        'message' => date( 'm/d', strtotime( $r['date'] ) ) . 'の振替休を割り当てられる日がありません',
+                    ];
+                }
             }
         }
         $houtei = $houtei_furi = $shitei = 0;
