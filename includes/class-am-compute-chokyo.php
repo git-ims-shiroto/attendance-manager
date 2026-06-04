@@ -248,21 +248,54 @@ class AM_Compute_Chokyo {
             $rows = self::apply_auto_kintai( $rows );
         }
 
-        // ---- パス3：休日勤務フラグ ----
-        $furikae_covered = [];
-        foreach ( $rows as $r ) {
-            if ( $r['default_kintai'] === '法定振替休' && ! empty( $r['furikae_label'] ) ) {
-                $furikae_covered[] = $r['furikae_label'];
-            }
-        }
+        // ---- パス3：休日出勤フラグ判定 ----
+        // 法定休出勤・所定休出勤をそれぞれ独立したフラグで管理
+        $houtei_kinmu_count = 0; // 法定休出勤数
+        $shitei_kinmu_count = 0; // 所定休出勤数
+        $houtei_furi_count  = 0; // 法定振替休数
+        $shitei_furi_count  = 0; // 所定振替休数
+
         foreach ( $rows as &$r ) {
-            $r['kyuujitsu_kinmu'] = false;
-            if ( $r['is_sun'] && $r['default_kintai'] === '出勤' ) {
-                $expected = date( 'm/d', strtotime( $r['date'] ) ) . '(日)の振替';
-                if ( ! in_array( $expected, $furikae_covered, true ) ) $r['kyuujitsu_kinmu'] = true;
+            $r['houtei_kinmu'] = false; // 法定休出勤バッジ
+            $r['shitei_kinmu'] = false; // 所定休出勤バッジ
+
+            if ( $r['has_data'] && $r['default_kintai'] === '出勤' ) {
+                if ( $r['is_sun'] ) {
+                    $r['houtei_kinmu'] = true;
+                    $houtei_kinmu_count++;
+                } elseif ( $r['is_shitei_holiday'] ) {
+                    $r['shitei_kinmu'] = true;
+                    $shitei_kinmu_count++;
+                }
             }
+            if ( $r['default_kintai'] === '法定振替休' ) $houtei_furi_count++;
+            if ( $r['default_kintai'] === '所定振替休' ) $shitei_furi_count++;
         }
         unset( $r );
+
+        // 法定休出勤 ↔ 法定振替休 のペア確認
+        if ( ! empty( $rows ) ) {
+            $pair_alerts = $rows[0]['_alerts'] ?? [];
+            if ( $houtei_kinmu_count !== $houtei_furi_count ) {
+                $pair_alerts[] = [
+                    'type'    => 'warn',
+                    'message' => sprintf(
+                        '法定休出勤（%d回）と法定振替休（%d日）の数が一致していません。',
+                        $houtei_kinmu_count, $houtei_furi_count
+                    ),
+                ];
+            }
+            if ( $shitei_kinmu_count !== $shitei_furi_count ) {
+                $pair_alerts[] = [
+                    'type'    => 'warn',
+                    'message' => sprintf(
+                        '所定休出勤（%d回）と所定振替休（%d日）の数が一致していません。',
+                        $shitei_kinmu_count, $shitei_furi_count
+                    ),
+                ];
+            }
+            $rows[0]['_alerts'] = $pair_alerts;
+        }
 
         return $rows;
     }
@@ -554,7 +587,7 @@ class AM_Compute_Chokyo {
             $kt = $r['default_kintai'] ?? '';
             if ( in_array( $kt, [ '出勤', '緊急出動' ], true ) ) $attendance++;
             if ( $kt === '欠勤' ) $absent++;
-            if ( $r['kyuujitsu_kinmu'] ?? false ) $holiday_work++;
+            if ( ( $r['houtei_kinmu'] ?? false ) || ( $r['shitei_kinmu'] ?? false ) ) $holiday_work++;
             $hayatai_min += (int) ( $r['hayatai_min'] ?? 0 );
         }
         $paidleave = AM_DB::get_paidleave_summary_by_crew( $crew_code, $year_month );

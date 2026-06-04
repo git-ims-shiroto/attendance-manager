@@ -888,3 +888,32 @@ tr[data-auto="false"] .am-kintai-select {
     white-space: nowrap;
     letter-spacing: .02em;
 }
+
+/* ===============================================================
+   法定休出勤・所定休出勤バッジ
+   ============================================================= */
+.am-badge-houtei-kinmu {
+    display: inline-block;
+    background: #8b1a1a;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 3px;
+    letter-spacing: .03em;
+    white-space: nowrap;
+    margin-top: 2px;
+}
+
+.am-badge-shitei-kinmu {
+    display: inline-block;
+    background: #5a3e00;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 3px;
+    letter-spacing: .03em;
+    white-space: nowrap;
+    margin-top: 2px;
+}
