@@ -50,6 +50,9 @@ class Tanpopo_AttendanceManager {
         // --- 種別管理 AJAX ---
         add_action( 'wp_ajax_am_jobtype_get',                [ 'AM_Ajax', 'jobtype_get' ] );
         add_action( 'wp_ajax_am_jobtype_save',               [ 'AM_Ajax', 'jobtype_save' ] );
+
+        // --- 集計一覧 AJAX ---
+        add_action( 'wp_ajax_am_summary_list_get',           [ 'AM_Ajax', 'summary_list_get' ] );
     }
 
     public static function format_min( $min ) {
@@ -200,6 +203,11 @@ class Tanpopo_AttendanceManager {
             [ $this, 'render_jiba_page' ]
         );
         add_submenu_page(
+            'attendance-manager', '集計一覧', '集計一覧',
+            'manage_options', 'attendance-manager-summary',
+            [ $this, 'render_summary_list_page' ]
+        );
+        add_submenu_page(
             'attendance-manager', '設定', '設定',
             'manage_options', 'attendance-manager-settings',
             [ $this, 'render_settings_page' ]
@@ -211,7 +219,7 @@ class Tanpopo_AttendanceManager {
      * ------------------------------------------------------------- */
     public function enqueue_assets() {
         $page  = isset( $_GET['page'] ) ? sanitize_text_field( $_GET['page'] ) : '';
-        $pages = [ 'attendance-manager', 'attendance-manager-jiba', 'attendance-manager-settings' ];
+        $pages = [ 'attendance-manager', 'attendance-manager-jiba', 'attendance-manager-summary', 'attendance-manager-settings' ];
         if ( ! in_array( $page, $pages, true ) ) return;
 
         wp_enqueue_style(  'am-admin', AM_PLUGIN_URL . 'assets/css/admin.css', [], AM_VERSION );
@@ -276,6 +284,14 @@ class Tanpopo_AttendanceManager {
 
         $kintai_types = self::KINTAI_TYPES;
         include AM_PLUGIN_DIR . 'templates/jiba-page.php';
+    }
+
+    /* ---------------------------------------------------------------
+     * 集計一覧
+     * ------------------------------------------------------------- */
+    public function render_summary_list_page() {
+        $selected_month = isset( $_GET['am_month'] ) ? sanitize_text_field( wp_unslash( $_GET['am_month'] ) ) : date( 'Y-m' );
+        include AM_PLUGIN_DIR . 'templates/summary-list-page.php';
     }
 
     /* ---------------------------------------------------------------

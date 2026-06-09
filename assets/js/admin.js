@@ -439,4 +439,79 @@
         jtLoad();
     }
 
+    /* ================================================================
+       集計一覧ページ
+       ================================================================ */
+    if (currentPage === 'attendance-manager-summary') {
+
+        function escHtml(str) {
+            return $('<span>').text(str == null ? '' : String(str)).html();
+        }
+
+        function loadSummaryList() {
+            var month = $('#am-sl-month').val();
+            if (!month) return;
+
+            $('#am-sl-loading').show();
+            $('#am-sl-error').hide();
+            $('#am-sl-empty-row').remove();
+            $('#am-sl-tbody').empty();
+
+            $.post(amData.ajaxUrl, {
+                action: 'am_summary_list_get',
+                nonce: amData.nonce,
+                year_month: month
+            }, function (res) {
+                $('#am-sl-loading').hide();
+
+                if (!res.success) {
+                    $('#am-sl-error').text(res.data.message || '読み込みに失敗しました').show();
+                    return;
+                }
+
+                var rows = res.data;
+                if (!rows.length) {
+                    $('#am-sl-tbody').html('<tr><td colspan="10" style="text-align:center;color:#999;padding:30px;">対象月のデータがありません</td></tr>');
+                    return;
+                }
+
+                var html = '';
+                $.each(rows, function (_, r) {
+                    var paidConsumed  = r.paid_has_data
+                        ? parseFloat(r.paid_consumed).toFixed(1) + '<span class="am-ms-unit">日</span>'
+                        : '<span class="am-ms-na">―</span>';
+                    var paidRemaining = r.paid_has_data
+                        ? parseFloat(r.paid_remaining).toFixed(1) + '<span class="am-ms-unit">日</span>'
+                        : '<span class="am-ms-na">―</span>';
+                    var hayataiHtml   = r.hayatai_str
+                        ? escHtml(r.hayatai_str)
+                        : '<span class="am-ms-na">―</span>';
+
+                    html += '<tr>';
+                    html += '<td class="am-sl-code">' + escHtml(r.employee_code) + '</td>';
+                    html += '<td class="am-sl-name">' + escHtml(r.name) + '</td>';
+                    html += '<td class="am-sl-num">' + r.attendance + '<span class="am-ms-unit">日</span></td>';
+                    html += '<td class="am-sl-num' + (r.absent > 0 ? ' am-ms-alert' : '') + '">' + r.absent + '<span class="am-ms-unit">日</span></td>';
+                    html += '<td class="am-sl-num' + (r.holiday_work > 0 ? ' am-ms-warn' : '') + '">' + r.holiday_work + '<span class="am-ms-unit">日</span></td>';
+                    html += '<td class="am-sl-num">' + paidConsumed + '</td>';
+                    html += '<td class="am-sl-num">' + paidRemaining + '</td>';
+                    html += '<td class="am-sl-num">' + escHtml(r.labor_str) + '</td>';
+                    html += '<td class="am-sl-num' + (r.hayatai_min > 0 ? ' am-ms-warn' : '') + '">' + hayataiHtml + '</td>';
+                    html += '<td class="am-sl-num' + (r.overtime_min > 0 ? ' am-ms-over' : '') + '">' + escHtml(r.overtime_str) + '</td>';
+                    html += '</tr>';
+                });
+
+                $('#am-sl-tbody').html(html);
+            }).fail(function () {
+                $('#am-sl-loading').hide();
+                $('#am-sl-error').text('通信エラーが発生しました').show();
+            });
+        }
+
+        $('#am-sl-load').on('click', loadSummaryList);
+
+        // 初期読み込み
+        loadSummaryList();
+    }
+
 })(jQuery);

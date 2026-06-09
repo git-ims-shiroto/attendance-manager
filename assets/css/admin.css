@@ -906,3 +906,75 @@ tr[data-auto="false"] .am-kintai-select {
     white-space: nowrap;
     margin-top: 2px;
 }
+
+/* ===============================================================
+   集計一覧テーブル
+   ============================================================= */
+.am-sl-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    white-space: nowrap;
+    background: #fff;
+}
+
+.am-sl-table thead tr {
+    background: #1e3a5f;
+    color: #fff;
+}
+
+.am-sl-table thead th {
+    padding: 10px 14px;
+    text-align: center;
+    font-weight: 700;
+    border: 1px solid #15304f;
+    font-size: 12px;
+    letter-spacing: .03em;
+}
+
+.am-sl-table tbody tr:nth-child(even) {
+    background: #f4f7fb;
+}
+
+.am-sl-table tbody tr:hover {
+    background: #eef4fb;
+}
+
+.am-sl-table td {
+    padding: 9px 14px;
+    border: 1px solid #dde3ea;
+    vertical-align: middle;
+}
+
+.am-sl-code {
+    text-align: center;
+    color: #666;
+    font-size: 12px;
+    min-width: 80px;
+}
+
+.am-sl-name {
+    text-align: left;
+    font-weight: 700;
+    color: #1e3a5f;
+    min-width: 100px;
+}
+
+.am-sl-num {
+    text-align: center;
+    font-size: 15px;
+    font-weight: 700;
+    color: #1e3a5f;
+    min-width: 80px;
+}
+
+/* スピナーアニメーション */
+.am-spin {
+    animation: am-spin 1s linear infinite;
+    display: inline-block;
+}
+
+@keyframes am-spin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+}
