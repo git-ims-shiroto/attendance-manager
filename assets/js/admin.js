@@ -169,6 +169,12 @@
         $('#am-select-crew').on('change', function () { updateBtnState('#am-select-crew', '#am-btn-open'); });
         $('#am-select-month').on('change input', function () { updateBtnState('#am-select-crew', '#am-btn-open'); });
 
+        // jibaトグルが操作されたかを追跡
+        var jibaToggled = false;
+        $(document).on('change', '.am-jiba-input', function () {
+            jibaToggled = true;
+        });
+
         $(document).on('click', '#am-btn-save', function () {
             var $btn = $(this);
             var crewCode = $btn.data('crew');
@@ -193,8 +199,8 @@
                 action: 'am_chokyo_kintai_save', nonce: amData.nonce, crew_code: crewCode, rows: rows,
             }, function (res) {
                 if (res.success) {
-                    // jibaフラグがONの行がある場合はページリロードで確実に再描画
-                    var jibaChanged = rows.some(function (r) { return r.jiba === 1; });
+                    // jibaトグルが操作された場合はページリロードで確実に再描画
+                    var jibaChanged = jibaToggled;
                     if (jibaChanged) {
                         $btn.prop('disabled', false).html('<span class="dashicons dashicons-saved"></span> 保存（更新）');
                         alert(res.data.saved + '件を保存しました。\nページを更新して反映します。');
@@ -227,6 +233,12 @@
         $('#am-select-emp').on('change', function () { updateBtnState('#am-select-emp', '#am-btn-open-jiba'); });
         $('#am-select-month-jiba').on('change input', function () { updateBtnState('#am-select-emp', '#am-btn-open-jiba'); });
 
+        // chokyoトグルが操作されたかを追跡
+        var chokyoToggled = false;
+        $(document).on('change', '.am-chokyo-input', function () {
+            chokyoToggled = true;
+        });
+
         $(document).on('click', '#am-btn-save-jiba', function () {
             var $btn = $(this);
             var empCode = $btn.data('emp');
@@ -251,9 +263,8 @@
                 action: 'am_jiba_kintai_save', nonce: amData.nonce, employee_code: empCode, rows: rows,
             }, function (res) {
                 if (res.success) {
-                    // chokyoフラグがONの行がある場合はページリロードで確実に再描画
-                    var chokyoChanged = rows.some(function (r) { return r.chokyo === 1; });
-                    if (chokyoChanged) {
+                    // chokyoトグルが操作された場合はページリロードで確実に再描画
+                    if (chokyoToggled) {
                         $btn.prop('disabled', false).html('<span class="dashicons dashicons-saved"></span> 保存（更新）');
                         alert(res.data.saved + '件を保存しました。\nページを更新して反映します。');
                         location.reload();
