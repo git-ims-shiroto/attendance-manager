@@ -86,11 +86,6 @@ class AM_Compute_Chokyo {
         $affiliation_id = AM_DB::get_affiliation_id_by_crew( $crew_code );
         $shitei_rules   = ( AM_DB::get_active_rules_by_affiliation() )[ $affiliation_id ] ?? [];
         $saved_kintai   = AM_DB::get_chokyo_saved_kintai( $crew_code, $year_month );
-        // kintai_type が空でない行が1件以上ある場合のみ has_saved = true
-        // 「保存済みだが全行空」の場合は apply_auto_kintai を実行させる
-        $has_saved = ! empty( array_filter( $saved_kintai, function( $r ) {
-            return $r['kintai_type'] !== '';
-        } ) );
 
         $dow_ja = [ 'Sun'=>'日','Mon'=>'月','Tue'=>'火','Wed'=>'水','Thu'=>'木','Fri'=>'金','Sat'=>'土' ];
         $rows   = [];
@@ -179,82 +174,85 @@ class AM_Compute_Chokyo {
         }
 
         // ---- パス2：保存データ適用 + 地場フラグON日をMATに切り替え ----
-        if ( $has_saved ) {
-            foreach ( $rows as &$r ) {
-                $saved = $saved_kintai[ $r['date'] ] ?? null;
-                if ( $saved !== null ) {
-                    $r['default_kintai'] = $saved['kintai_type'];
-                    $r['furikae_label']  = $saved['furikae_label'];
-                    $r['is_manual']      = (bool) $saved['is_manual'];
-                    $r['jiba']           = (bool) ( $saved['jiba'] ?? false );
-                    $r['hayatai_min']    = (int)  ( $saved['hayatai_min'] ?? 0 );
-                    $r['note']           = $saved['note'] ?? '';
-                }
+        // is_manual / jiba / hayatai_min / note は常に保存値を適用
+        // kintai_type / furikae_label は is_manual = true のときのみ保存値を優先
+        foreach ( $rows as &$r ) {
+            $saved = $saved_kintai[ $r['date'] ] ?? null;
+            if ( $saved === null ) continue;
+
+            $r['is_manual']   = (bool) $saved['is_manual'];
+            $r['jiba']        = (bool) ( $saved['jiba'] ?? false );
+            $r['hayatai_min'] = (int)  ( $saved['hayatai_min'] ?? 0 );
+            $r['note']        = $saved['note'] ?? '';
+
+            if ( $r['is_manual'] ) {
+                $r['default_kintai'] = $saved['kintai_type'];
+                $r['furikae_label']  = $saved['furikae_label'];
             }
-            unset( $r );
-
-            foreach ( $rows as &$r ) {
-                if ( ! ( $r['jiba'] ?? false ) ) continue;
-                $mat = $mat_by_date[ $r['date'] ] ?? null;
-                if ( ! $mat ) continue;
-
-                $ci = $mat['clock_in']  ? substr( $mat['clock_in'],  0, 5 ) : '';
-                $co = $mat['clock_out'] ? substr( $mat['clock_out'], 0, 5 ) : '';
-                $bm = isset( $mat['break_minutes'] ) && $mat['break_minutes'] !== null ? (int) $mat['break_minutes'] : 0;
-
-                $r['start_time'] = $ci;
-                if ( $ci !== '' && $co !== '' ) {
-                    list( $sh, $sm ) = array_map( 'intval', explode( ':', $ci ) );
-                    list( $eh, $em ) = array_map( 'intval', explode( ':', $co ) );
-                    $st = $sh * 60 + $sm; $et = $eh * 60 + $em;
-                    // 日跨ぎ → 24時間形式で表示
-                    if ( $et <= $st ) {
-                        $co = ( $eh + 24 ) . ':' . str_pad( $em, 2, '0', STR_PAD_LEFT );
-                        $et += 1440;
-                    }
-                    $r['end_time'] = $co;
-                    $kousoku = $et - $st; $labor = $kousoku - $bm;
-                    $r['kousoku_min'] = $kousoku; $r['labor_min'] = max( 0, $labor );
-                    $r['break_calc_min'] = $bm; $r['overtime_min'] = max( 0, $labor - 480 );
-                } else {
-                    $r['end_time'] = $co;
-                    $r['kousoku_min'] = $r['labor_min'] = $r['break_calc_min'] = $r['overtime_min'] = null;
-                }
-                $r['drive_min'] = $r['cargo_min'] = $r['midnight_min'] = null;
-                $r['has_data']  = true;
-            }
-            unset( $r );
-
-            // パス2補完：保存データの自動補正
-            // ① データなしなのに出勤になっている行 → 曜日・休日で再判定
-            // ② データがあるのに法定休・所定休になっている行 → 出勤に補正
-            // ③ kintai_type が空の行 → データ・曜日・所定休日から自動判定
-            foreach ( $rows as &$r ) {
-                if ( $r['default_kintai'] === '出勤' && ! $r['has_data'] && ! $r['is_manual'] ) {
-                    // データがないのに出勤は矛盾（手動変更でない場合のみ補正）
-                    if ( $r['is_sun'] )                { $r['default_kintai'] = '法定休'; }
-                    elseif ( $r['is_shitei_holiday'] ) { $r['default_kintai'] = '所定休'; }
-                    else                               { $r['default_kintai'] = ''; }
-                    continue;
-                }
-                if ( $r['default_kintai'] !== '' ) {
-                    // データがあるのに法定休・所定休は矛盾（手動変更でない場合のみ補正）
-                    if ( $r['has_data'] && ! $r['is_manual'] && in_array( $r['default_kintai'], [ '法定休', '所定休' ], true ) ) {
-                        $r['default_kintai'] = '出勤';
-                    }
-                    continue;
-                }
-                // kintai_type が空の行を自動判定
-                if ( $r['has_data'] )          { $r['default_kintai'] = '出勤';   continue; }
-                if ( $r['is_sun'] )            { $r['default_kintai'] = '法定休'; continue; }
-                if ( $r['is_shitei_holiday'] ) { $r['default_kintai'] = '所定休'; }
-            }
-            unset( $r );
-
-            $rows = self::check_alerts_only( $rows );
-        } else {
-            $rows = self::apply_auto_kintai( $rows );
         }
+        unset( $r );
+
+        foreach ( $rows as &$r ) {
+            if ( ! ( $r['jiba'] ?? false ) ) continue;
+            $mat = $mat_by_date[ $r['date'] ] ?? null;
+            if ( ! $mat ) continue;
+
+            $ci = $mat['clock_in']  ? substr( $mat['clock_in'],  0, 5 ) : '';
+            $co = $mat['clock_out'] ? substr( $mat['clock_out'], 0, 5 ) : '';
+            $bm = isset( $mat['break_minutes'] ) && $mat['break_minutes'] !== null ? (int) $mat['break_minutes'] : 0;
+
+            $r['start_time'] = $ci;
+            if ( $ci !== '' && $co !== '' ) {
+                list( $sh, $sm ) = array_map( 'intval', explode( ':', $ci ) );
+                list( $eh, $em ) = array_map( 'intval', explode( ':', $co ) );
+                $st = $sh * 60 + $sm; $et = $eh * 60 + $em;
+                // 日跨ぎ → 24時間形式で表示
+                if ( $et <= $st ) {
+                    $co = ( $eh + 24 ) . ':' . str_pad( $em, 2, '0', STR_PAD_LEFT );
+                    $et += 1440;
+                }
+                $r['end_time'] = $co;
+                $kousoku = $et - $st; $labor = $kousoku - $bm;
+                $r['kousoku_min'] = $kousoku; $r['labor_min'] = max( 0, $labor );
+                $r['break_calc_min'] = $bm; $r['overtime_min'] = max( 0, $labor - 480 );
+            } else {
+                $r['end_time'] = $co;
+                $r['kousoku_min'] = $r['labor_min'] = $r['break_calc_min'] = $r['overtime_min'] = null;
+            }
+            $r['drive_min'] = $r['cargo_min'] = $r['midnight_min'] = null;
+            $r['has_data']  = true;
+        }
+        unset( $r );
+
+        // パス2補完：保存データの自動補正（手動設定行はスキップ）
+        // ① データなしなのに出勤になっている行 → 曜日・休日で再判定
+        // ② データがあるのに法定休・所定休になっている行 → 出勤に補正
+        // ③ kintai_type が空の行 → データ・曜日・所定休日から自動判定
+        foreach ( $rows as &$r ) {
+            if ( $r['is_manual'] ) continue; // 手動設定行はスキップ
+            if ( $r['default_kintai'] === '出勤' && ! $r['has_data'] ) {
+                // データがないのに出勤は矛盾（手動変更でない場合のみ補正）
+                if ( $r['is_sun'] )                { $r['default_kintai'] = '法定休'; }
+                elseif ( $r['is_shitei_holiday'] ) { $r['default_kintai'] = '所定休'; }
+                else                               { $r['default_kintai'] = ''; }
+                continue;
+            }
+            if ( $r['default_kintai'] !== '' ) {
+                // データがあるのに法定休・所定休は矛盾（手動変更でない場合のみ補正）
+                if ( $r['has_data'] && in_array( $r['default_kintai'], [ '法定休', '所定休' ], true ) ) {
+                    $r['default_kintai'] = '出勤';
+                }
+                continue;
+            }
+            // kintai_type が空の行を自動判定
+            if ( $r['has_data'] )          { $r['default_kintai'] = '出勤';   continue; }
+            if ( $r['is_sun'] )            { $r['default_kintai'] = '法定休'; continue; }
+            if ( $r['is_shitei_holiday'] ) { $r['default_kintai'] = '所定休'; }
+        }
+        unset( $r );
+
+        // has_saved に関わらず常に自動計算を実行（is_manual フラグで手動行を保護）
+        $rows = self::apply_auto_kintai( $rows );
 
         // ---- パス3：休日出勤フラグ判定 ----
         // 法定休出勤・所定休出勤をそれぞれ独立したフラグで管理
@@ -331,6 +329,7 @@ class AM_Compute_Chokyo {
         // ※ 超過分は '' に戻すが、is_shitei_holiday フラグは保持する
         $shitei_count = 0;
         foreach ( $rows as &$r ) {
+            if ( $r['is_manual'] ) continue; // 手動設定行はスキップ
             if ( $r['default_kintai'] === '所定休' ) {
                 $shitei_count++;
                 if ( $shitei_count > 2 ) $r['default_kintai'] = '';
@@ -339,16 +338,18 @@ class AM_Compute_Chokyo {
         unset( $r );
 
         // 振替先候補の判定ヘルパー
-        // 条件：勤怠種別未設定 かつ データなし かつ 日曜でない かつ 所定休日でない
+        // 条件：勤怠種別未設定 かつ データなし かつ 日曜でない かつ 所定休日でない かつ 手動設定でない
         $is_furikae_candidate = function( $row ) {
             return $row['default_kintai'] === ''
                 && ! $row['has_data']
                 && ! $row['is_sun']
-                && ! $row['is_shitei_holiday'];
+                && ! $row['is_shitei_holiday']
+                && ! $row['is_manual'];
         };
 
         // ② 法定振替休割当（日曜出勤の場合）
         foreach ( $rows as $i => $r ) {
+            if ( $r['is_manual'] ) continue; // 手動設定行は振替元にしない
             if ( $r['is_sun'] && $r['has_data'] && $r['default_kintai'] === '出勤' ) {
                 $assigned = false;
                 for ( $j = $i + 1; $j < count( $rows ); $j++ ) {
@@ -370,6 +371,7 @@ class AM_Compute_Chokyo {
 
         // ③ 所定振替休割当（所定休日出勤の場合）
         foreach ( $rows as $i => $r ) {
+            if ( $r['is_manual'] ) continue; // 手動設定行は振替元にしない
             if ( $r['is_shitei_holiday'] && $r['has_data'] && $r['default_kintai'] === '出勤' ) {
                 $assigned = false;
                 for ( $j = $i + 1; $j < count( $rows ); $j++ ) {
