@@ -193,6 +193,14 @@
                 action: 'am_chokyo_kintai_save', nonce: amData.nonce, crew_code: crewCode, rows: rows,
             }, function (res) {
                 if (res.success) {
+                    // jibaフラグがONの行がある場合はページリロードで確実に再描画
+                    var jibaChanged = rows.some(function (r) { return r.jiba === 1; });
+                    if (jibaChanged) {
+                        $btn.prop('disabled', false).html('<span class="dashicons dashicons-saved"></span> 保存（更新）');
+                        alert(res.data.saved + '件を保存しました。\nページを更新して反映します。');
+                        location.reload();
+                        return;
+                    }
                     $msg.text(res.data.saved + '件を保存しました').css({ color: '#2c5f2e', background: '#f0fff0', borderLeft: '4px solid #2c5f2e', padding: '8px 20px' }).show();
                     var p = { crew_code: crewCode, year_month: month };
                     refreshSummary(p, 'am_chokyo_get_monthly_summary');
@@ -243,6 +251,14 @@
                 action: 'am_jiba_kintai_save', nonce: amData.nonce, employee_code: empCode, rows: rows,
             }, function (res) {
                 if (res.success) {
+                    // chokyoフラグがONの行がある場合はページリロードで確実に再描画
+                    var chokyoChanged = rows.some(function (r) { return r.chokyo === 1; });
+                    if (chokyoChanged) {
+                        $btn.prop('disabled', false).html('<span class="dashicons dashicons-saved"></span> 保存（更新）');
+                        alert(res.data.saved + '件を保存しました。\nページを更新して反映します。');
+                        location.reload();
+                        return;
+                    }
                     $msg.text(res.data.saved + '件を保存しました').css({ color: '#2c5f2e', background: '#f0fff0', borderLeft: '4px solid #2c5f2e', padding: '8px 20px' }).show();
                     var p = { employee_code: empCode, year_month: month };
                     refreshSummary(p, 'am_jiba_get_monthly_summary');
