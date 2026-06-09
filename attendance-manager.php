@@ -189,7 +189,7 @@ class Tanpopo_AttendanceManager {
             'manage_options',
             'attendance-manager',
             [ $this, 'render_chokyo_page' ],
-            'dashicons-car',
+            'dashicons-calendar-alt',
             28
         );
         add_submenu_page(
