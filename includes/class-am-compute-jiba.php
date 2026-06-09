@@ -115,7 +115,7 @@ class AM_Compute_Jiba {
 
             $is_shitei = self::is_shitei_holiday( $date_str, $dow_num, $shitei_rules );
             // has_data: mat または chokyo フラグON時のkousoku どちらかにデータがあれば true
-            $has_data = ( $mat !== null );
+            $has_data = ( $mat !== null && ( $mat['clock_in'] !== null || $mat['clock_out'] !== null ) );
             $default_kintai = $has_data ? '出勤' : ( $is_sun ? '法定休' : ( $is_shitei ? '所定休' : '' ) );
 
             $rows[] = [
