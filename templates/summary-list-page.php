@@ -34,8 +34,8 @@ $page_url = admin_url( 'admin.php?page=attendance-manager-summary' );
         <div id="am-sl-loading" style="display:none; padding:30px; text-align:center; color:#666;">
             <span class="dashicons dashicons-update am-spin"></span> 読み込み中...
         </div>
-        <div id="am-sl-error" style="display:none;" class="am-notice am-notice-error" style="margin:16px 20px;"></div>
-        <div style="overflow-x:auto;" id="am-sl-table-wrap">
+        <div id="am-sl-error" class="am-notice am-notice-error" style="display:none; margin:16px 20px;"></div>
+        <div style="overflow-x:auto; display:none;" id="am-sl-table-wrap">
             <table class="am-sl-table" id="am-sl-table">
                 <thead>
                     <tr>
@@ -51,11 +51,7 @@ $page_url = admin_url( 'admin.php?page=attendance-manager-summary' );
                         <th>確定残業時間</th>
                     </tr>
                 </thead>
-                <tbody id="am-sl-tbody">
-                    <tr id="am-sl-empty-row">
-                        <td colspan="10" style="text-align:center; color:#999; padding:30px;">「読み込む」ボタンを押してください</td>
-                    </tr>
-                </tbody>
+                <tbody id="am-sl-tbody"></tbody>
             </table>
         </div>
     </div>
