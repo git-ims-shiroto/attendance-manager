@@ -910,6 +910,11 @@ tr[data-auto="false"] .am-kintai-select {
 /* ===============================================================
    集計一覧テーブル
    ============================================================= */
+.am-sl-table-wrap {
+    overflow: auto;
+    max-height: 600px;
+}
+
 .am-sl-table {
     width: 100%;
     border-collapse: collapse;
@@ -924,6 +929,10 @@ tr[data-auto="false"] .am-kintai-select {
 }
 
 .am-sl-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: #1e3a5f;
     padding: 10px 14px;
     text-align: center;
     font-weight: 700;

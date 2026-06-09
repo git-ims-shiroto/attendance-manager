@@ -35,7 +35,7 @@ $page_url = admin_url( 'admin.php?page=attendance-manager-summary' );
             <span class="dashicons dashicons-update am-spin"></span> 読み込み中...
         </div>
         <div id="am-sl-error" class="am-notice am-notice-error" style="display:none; margin:16px 20px;"></div>
-        <div style="overflow-x:auto; display:none;" id="am-sl-table-wrap">
+        <div class="am-sl-table-wrap" style="display:none;" id="am-sl-table-wrap">
             <table class="am-sl-table" id="am-sl-table">
                 <thead>
                     <tr>
