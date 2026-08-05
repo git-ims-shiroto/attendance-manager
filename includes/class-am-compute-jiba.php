@@ -33,15 +33,21 @@ class AM_Compute_Jiba {
         $ymd_end    = str_replace( '-', '', $end_date );
 
         // mat_attendance_daily（デフォルト）
-        $mat_rows = $wpdb->get_results( $wpdb->prepare(
-            "SELECT work_date, clock_in, clock_out, break_minutes
-             FROM `{$wpdb->prefix}mat_attendance_daily`
-             WHERE employee_code COLLATE utf8mb4_unicode_520_ci = %s
-               AND work_date BETWEEN %s AND %s",
-            $employee_code, $start_date, $end_date
-        ), ARRAY_A );
+        // MAT v3.2.0 以降は公開API（mat_get_daily_by_month）から丸め値・残業込みで取得する。
+        // 未導入の環境では従来どおり直接 SELECT する。
         $mat_by_date = [];
-        foreach ( (array) $mat_rows as $mr ) { $mat_by_date[ $mr['work_date'] ] = $mr; }
+        if ( function_exists( 'mat_get_daily_by_month' ) ) {
+            $mat_by_date = (array) mat_get_daily_by_month( $employee_code, $year_month );
+        } else {
+            $mat_rows = $wpdb->get_results( $wpdb->prepare(
+                "SELECT work_date, clock_in, clock_out, break_minutes
+                 FROM `{$wpdb->prefix}mat_attendance_daily`
+                 WHERE employee_code COLLATE utf8mb4_unicode_520_ci = %s
+                   AND work_date BETWEEN %s AND %s",
+                $employee_code, $start_date, $end_date
+            ), ARRAY_A );
+            foreach ( (array) $mat_rows as $mr ) { $mat_by_date[ $mr['work_date'] ] = $mr; }
+        }
 
         // kousoku_log（長距離フラグON日用）
         $crew_code = AM_DB::get_crew_code_by_emp( $employee_code );
@@ -91,31 +97,45 @@ class AM_Compute_Jiba {
             $kousoku_min = $labor_min = $break_calc_min = $overtime_min = null;
 
             if ( $mat ) {
-                $ci = $mat['clock_in']  ? substr( $mat['clock_in'],  0, 5 ) : '';
-                $co = $mat['clock_out'] ? substr( $mat['clock_out'], 0, 5 ) : '';
-                $bm = isset( $mat['break_minutes'] ) && $mat['break_minutes'] !== null ? (int) $mat['break_minutes'] : 0;
-                $start_time = $ci;
-                if ( $ci !== '' && $co !== '' ) {
-                    list( $sh, $sm ) = array_map( 'intval', explode( ':', $ci ) );
-                    list( $eh, $em ) = array_map( 'intval', explode( ':', $co ) );
-                    $st = $sh * 60 + $sm; $et = $eh * 60 + $em;
-                    // 日跨ぎ → 24時間形式で表示
-                    if ( $et <= $st ) {
-                        $co = ( $eh + 24 ) . ':' . str_pad( $em, 2, '0', STR_PAD_LEFT );
-                        $et += 1440;
-                    }
-                    $end_time = $co;
-                    $kousoku = $et - $st; $labor = $kousoku - $bm;
-                    $kousoku_min = $kousoku; $labor_min = max( 0, $labor );
-                    $break_calc_min = $bm; $overtime_min = max( 0, $labor - 480 );
+                if ( isset( $mat['kousoku_minutes'] ) ) {
+                    // ---- MAT 公開API 版（v3.2.0〜） ----
+                    // 始業・終業（丸め値。NULL のときは実打刻にフォールバック済み）を計算元にする。
+                    // 日跨ぎは rounded_clock_out が 25:00 形式で保持されているため推測ロジックは不要。
+                    $start_time     = $mat['rounded_clock_in']  !== '' ? $mat['rounded_clock_in']  : $mat['clock_in'];
+                    $end_time       = $mat['rounded_clock_out'] !== '' ? $mat['rounded_clock_out'] : $mat['clock_out'];
+                    $kousoku_min    = $mat['kousoku_minutes'];
+                    $labor_min      = $mat['labor_minutes'];
+                    $break_calc_min = $mat['break_minutes'] !== null ? (int) $mat['break_minutes'] : 0;
+                    $overtime_min   = $mat['overtime_minutes'];
                 } else {
-                    $end_time = $co;
+                    // ---- 旧実装（MAT が v3.2.0 未満のとき） ----
+                    $ci = $mat['clock_in']  ? substr( $mat['clock_in'],  0, 5 ) : '';
+                    $co = $mat['clock_out'] ? substr( $mat['clock_out'], 0, 5 ) : '';
+                    $bm = isset( $mat['break_minutes'] ) && $mat['break_minutes'] !== null ? (int) $mat['break_minutes'] : 0;
+                    $start_time = $ci;
+                    if ( $ci !== '' && $co !== '' ) {
+                        list( $sh, $sm ) = array_map( 'intval', explode( ':', $ci ) );
+                        list( $eh, $em ) = array_map( 'intval', explode( ':', $co ) );
+                        $st = $sh * 60 + $sm; $et = $eh * 60 + $em;
+                        // 日跨ぎ → 24時間形式で表示
+                        if ( $et <= $st ) {
+                            $co = ( $eh + 24 ) . ':' . str_pad( $em, 2, '0', STR_PAD_LEFT );
+                            $et += 1440;
+                        }
+                        $end_time = $co;
+                        $kousoku = $et - $st; $labor = $kousoku - $bm;
+                        $kousoku_min = $kousoku; $labor_min = max( 0, $labor );
+                        $break_calc_min = $bm; $overtime_min = max( 0, $labor - 480 );
+                    } else {
+                        $end_time = $co;
+                    }
                 }
             }
 
             $is_shitei = self::is_shitei_holiday( $date_str, $dow_num, $shitei_rules );
             // has_data: mat または chokyo フラグON時のkousoku どちらかにデータがあれば true
-            $has_data = ( $mat !== null && ( $mat['clock_in'] !== null || $mat['clock_out'] !== null ) );
+            $has_data = ( $mat !== null
+                && ( ! empty( $mat['clock_in'] ) || ! empty( $mat['clock_out'] ) ) );
             $default_kintai = $has_data ? '出勤' : ( $is_sun ? '法定休' : ( $is_shitei ? '所定休' : '' ) );
 
             $rows[] = [
