@@ -94,7 +94,7 @@ class AM_Compute_Jiba {
 
             $mat = $mat_by_date[ $date_str ] ?? null;
             $start_time = $end_time = '';
-            $kousoku_min = $labor_min = $break_calc_min = $overtime_min = null;
+            $kousoku_min = $labor_min = $break_calc_min = $overtime_min = $midnight_min = null;
 
             if ( $mat ) {
                 if ( isset( $mat['kousoku_minutes'] ) ) {
@@ -107,6 +107,7 @@ class AM_Compute_Jiba {
                     $labor_min      = $mat['labor_minutes'];
                     $break_calc_min = $mat['break_minutes'] !== null ? (int) $mat['break_minutes'] : 0;
                     $overtime_min   = $mat['overtime_minutes'];
+                    $midnight_min   = $mat['midnight_minutes'] ?? null;
                 } else {
                     // ---- 旧実装（MAT が v3.2.0 未満のとき） ----
                     $ci = $mat['clock_in']  ? substr( $mat['clock_in'],  0, 5 ) : '';
@@ -148,7 +149,7 @@ class AM_Compute_Jiba {
                 'kousoku_min' => $kousoku_min, 'labor_min' => $labor_min,
                 'drive_min' => null, 'cargo_min' => null,
                 'break_calc_min' => $break_calc_min, 'overtime_min' => $overtime_min,
-                'midnight_min' => null,
+                'midnight_min' => $midnight_min,
             ];
             $cursor->modify('+1 day');
         }
