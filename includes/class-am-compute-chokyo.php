@@ -92,6 +92,7 @@ class AM_Compute_Chokyo {
         $affiliation_id = AM_DB::get_affiliation_id_by_crew( $crew_code );
         $shitei_rules   = ( AM_DB::get_active_rules_by_affiliation() )[ $affiliation_id ] ?? [];
         $saved_kintai   = AM_DB::get_chokyo_saved_kintai( $crew_code, $year_month );
+        $paidleave_dates = AM_DB::get_paidleave_consumed_dates( $employee_code_for_mat, $year_month );
 
         $dow_ja = [ 'Sun'=>'日','Mon'=>'月','Tue'=>'火','Wed'=>'水','Thu'=>'木','Fri'=>'金','Sat'=>'土' ];
         $rows   = [];
@@ -239,6 +240,15 @@ class AM_Compute_Chokyo {
             }
             $r['drive_min'] = $r['cargo_min'] = null;
             $r['has_data']  = true;
+        }
+        unset( $r );
+
+        // 承認済み有給の消化日を勤怠種別へ反映（手動設定行は保持）
+        foreach ( $rows as &$r ) {
+            if ( ! $r['is_manual'] && isset( $paidleave_dates[ $r['date'] ] ) ) {
+                $r['default_kintai'] = '有給';
+                $r['furikae_label']  = '';
+            }
         }
         unset( $r );
 

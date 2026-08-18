@@ -285,6 +285,34 @@ class AM_DB {
     }
 
     /* ---------------------------------------------------------------
+     * 【共通】有給消化日を日付キーで取得（paid-leave-manager 連携）
+     * ------------------------------------------------------------- */
+    public static function get_paidleave_consumed_dates( $employee_code, $year_month ) {
+        global $wpdb;
+        $table = $wpdb->prefix . 'paidleave_consumptions';
+        if ( ! $employee_code || ! $wpdb->get_var( "SHOW TABLES LIKE '{$table}'" ) ) {
+            return [];
+        }
+
+        $start = $year_month . '-01';
+        $end   = date( 'Y-m-t', strtotime( $start ) );
+        $rows  = $wpdb->get_results( $wpdb->prepare(
+            "SELECT consumed_date, SUM(consumed_days) AS consumed_days
+             FROM `{$table}`
+             WHERE employee_code = %s AND consumed_date BETWEEN %s AND %s
+             GROUP BY consumed_date
+             HAVING SUM(consumed_days) > 0",
+            $employee_code, $start, $end
+        ), ARRAY_A );
+
+        $map = [];
+        foreach ( (array) $rows as $row ) {
+            $map[ $row['consumed_date'] ] = (float) $row['consumed_days'];
+        }
+        return $map;
+    }
+
+    /* ---------------------------------------------------------------
      * 【長距離用】有給サマリ取得（crew_code → employee_code 変換して参照）
      * ------------------------------------------------------------- */
     public static function get_paidleave_summary_by_crew( $crew_code, $year_month ) {
