@@ -272,8 +272,8 @@ class AM_DB {
         $start    = $year_month . '-01';
         $end      = date( 'Y-m-t', strtotime( $start ) );
         $consumed = (float) $wpdb->get_var( $wpdb->prepare(
-            "SELECT COALESCE( SUM(days_consumed), 0 ) FROM `{$tbl_cons}`
-             WHERE employee_code = %s AND consume_date BETWEEN %s AND %s",
+            "SELECT COALESCE( SUM(consumed_days), 0 ) FROM `{$tbl_cons}`
+             WHERE employee_code = %s AND consumed_date BETWEEN %s AND %s",
             $employee_code, $start, $end
         ) );
         $remaining = (float) $wpdb->get_var( $wpdb->prepare(
