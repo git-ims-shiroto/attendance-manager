@@ -22,12 +22,15 @@
             <td class="wcol-date"><?php echo esc_html( $w['disp_end'] ); ?></td>
             <td class="wcol-days"><?php echo esc_html( $w['days'] ); ?>日</td>
             <?php if ( $w['is_prev_carry'] ) : ?>
-            <td class="wcol-min am-cell-na">―</td><td class="wcol-min am-cell-na">―</td>
+            <td class="wcol-min am-cell-na">―</td>
+            <td class="wcol-min" title="前月繰越分の労働時間。第1週計の週残業判定に加算されます。">
+                <?php echo esc_html( Tanpopo_AttendanceManager::format_min( $w['labor_min'] ) ); ?>
+            </td>
             <td class="wcol-min am-cell-na">―</td><td class="wcol-min am-cell-na">―</td>
             <td class="wcol-min am-cell-na">―</td><td class="wcol-min am-cell-na">―</td>
             <td class="wcol-min <?php echo ( (int)$w['day_overtime_min'] > 0 ) ? 'am-cell-over' : ''; ?>"><?php echo esc_html( Tanpopo_AttendanceManager::format_min( $w['day_overtime_min'] ) ); ?></td>
-            <td class="wcol-min <?php echo ( (int)$w['week_overtime_min'] > 0 ) ? 'am-cell-over' : ''; ?>"><?php echo esc_html( Tanpopo_AttendanceManager::format_min( $w['week_overtime_min'] ) ); ?></td>
-            <td class="wcol-min">―</td>
+            <td class="wcol-min am-cell-na">―</td>
+            <td class="wcol-min am-cell-na">―</td>
             <?php else : ?>
             <td class="wcol-min"><?php echo esc_html( Tanpopo_AttendanceManager::format_min( $w['kousoku_min'] ) ); ?></td>
             <td class="wcol-min"><?php echo esc_html( Tanpopo_AttendanceManager::format_min( $w['labor_min'] ) ); ?></td>

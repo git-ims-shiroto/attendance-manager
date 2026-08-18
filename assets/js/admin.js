@@ -39,9 +39,51 @@
     function refreshDailyRows(params, action) {
         $.post(amData.ajaxUrl, $.extend({ action: action, nonce: amData.nonce }, params), function (res) {
             if (!res.success) return;
-            $.each(res.data, function (_, r) {
+
+            // 警告アラートを更新
+            var alerts = res.data.alerts || [];
+            var $alertWrap = $('.am-alerts');
+            if (alerts.length) {
+                var html = '';
+                $.each(alerts, function (_, a) {
+                    var cls = a.type === 'error' ? 'am-alert-error' : 'am-alert-warn';
+                    var icon = a.type === 'error' ? 'dashicons-warning' : 'dashicons-info';
+                    html += '<div class="am-alert ' + cls + '">'
+                        + '<span class="dashicons ' + icon + '"></span>'
+                        + $('<span>').text(a.message).html()
+                        + '</div>';
+                });
+                if ($alertWrap.length) {
+                    $alertWrap.html(html).show();
+                } else {
+                    $('.am-info-table').after('<div class="am-alerts">' + html + '</div>');
+                }
+            } else {
+                $alertWrap.empty().hide();
+            }
+
+            // 日次行を更新
+            $.each(res.data.rows, function (_, r) {
                 var $tr = $('tbody tr[data-date="' + r.date + '"]');
                 if (!$tr.length) return;
+
+                // 勤怠種別セレクトを更新
+                if (r.kintai_type !== undefined) {
+                    $tr.find('.am-kintai-select').val(r.kintai_type);
+                    $tr.attr('data-auto', 'true');
+                }
+
+                // 法定休出勤・所定休出勤バッジを更新
+                $tr.find('.am-badge-houtei-kinmu').remove();
+                $tr.find('.am-badge-shitei-kinmu').remove();
+                if (r.houtei_kinmu) {
+                    $tr.find('.am-date-row').after('<span class="am-badge-houtei-kinmu">法定休出勤</span>');
+                }
+                if (r.shitei_kinmu) {
+                    $tr.find('.am-date-row').after('<span class="am-badge-shitei-kinmu">所定休出勤</span>');
+                }
+
+                // 時間データを更新
                 $tr.find('td:nth-child(3)').text(r.start_time);
                 $tr.find('td:nth-child(4)').text(r.end_time);
                 $tr.find('td:nth-child(5)').text(r.kousoku_min);
@@ -58,7 +100,7 @@
     function refreshWeeklyRows(params, action) {
         $.post(amData.ajaxUrl, $.extend({ action: action, nonce: amData.nonce }, params), function (res) {
             if (!res.success) return;
-            var $rows    = $('.am-weekly-table tbody tr');
+            var $rows = $('.am-weekly-table tbody tr');
             var dataRows = res.data.filter(function (r) { return r.label !== '__total__'; });
             var totalRow = res.data.find(function (r) { return r.label === '__total__'; });
             dataRows.forEach(function (r, i) {
@@ -105,7 +147,7 @@
         var affil = $(this).data('affil');
         $('.am-chip').removeClass('am-chip-active');
         $(this).addClass('am-chip-active');
-        var $select  = $('.am-select[name="am_crew"], .am-select[name="am_emp"]');
+        var $select = $('.am-select[name="am_crew"], .am-select[name="am_emp"]');
         var $options = $select.find('option[data-affil]');
         if (affil === 'all') { $options.show(); }
         else { $options.each(function () { $(this).data('affil') == affil ? $(this).show() : $(this).hide(); }); }
@@ -127,22 +169,28 @@
         $('#am-select-crew').on('change', function () { updateBtnState('#am-select-crew', '#am-btn-open'); });
         $('#am-select-month').on('change input', function () { updateBtnState('#am-select-crew', '#am-btn-open'); });
 
+        // jibaトグルが操作されたかを追跡
+        var jibaToggled = false;
+        $(document).on('change', '.am-jiba-input', function () {
+            jibaToggled = true;
+        });
+
         $(document).on('click', '#am-btn-save', function () {
-            var $btn      = $(this);
-            var crewCode  = $btn.data('crew');
-            var month     = $btn.data('month');
-            var $msg      = $('#am-save-message');
+            var $btn = $(this);
+            var crewCode = $btn.data('crew');
+            var month = $btn.data('month');
+            var $msg = $('#am-save-message');
             var rows = [];
             $('tbody tr[data-date]').each(function () {
                 var $tr = $(this);
                 rows.push({
-                    date:          $tr.data('date'),
-                    kintai_type:   $tr.find('.am-kintai-select').val() || '',
+                    date: $tr.data('date'),
+                    kintai_type: $tr.find('.am-kintai-select').val() || '',
                     furikae_label: $tr.data('furikae') || '',
-                    is_manual:     $tr.attr('data-auto') === 'false' ? 1 : 0,
-                    jiba:          $tr.find('.am-jiba-input').is(':checked') ? 1 : 0,
-                    hayatai_min:   parseMin($tr.find('.am-hayatai-input').val()),
-                    note:          $tr.find('.am-note-input').val() || '',
+                    is_manual: $tr.attr('data-auto') === 'false' ? 1 : 0,
+                    jiba: $tr.find('.am-jiba-input').is(':checked') ? 1 : 0,
+                    hayatai_min: parseMin($tr.find('.am-hayatai-input').val()),
+                    note: $tr.find('.am-note-input').val() || '',
                 });
             });
             $btn.prop('disabled', true).text('保存中...');
@@ -151,6 +199,14 @@
                 action: 'am_chokyo_kintai_save', nonce: amData.nonce, crew_code: crewCode, rows: rows,
             }, function (res) {
                 if (res.success) {
+                    // jibaトグルが操作された場合はページリロードで確実に再描画
+                    var jibaChanged = jibaToggled;
+                    if (jibaChanged) {
+                        $btn.prop('disabled', false).html('<span class="dashicons dashicons-saved"></span> 保存（更新）');
+                        alert(res.data.saved + '件を保存しました。\nページを更新して反映します。');
+                        location.reload();
+                        return;
+                    }
                     $msg.text(res.data.saved + '件を保存しました').css({ color: '#2c5f2e', background: '#f0fff0', borderLeft: '4px solid #2c5f2e', padding: '8px 20px' }).show();
                     var p = { crew_code: crewCode, year_month: month };
                     refreshSummary(p, 'am_chokyo_get_monthly_summary');
@@ -177,22 +233,28 @@
         $('#am-select-emp').on('change', function () { updateBtnState('#am-select-emp', '#am-btn-open-jiba'); });
         $('#am-select-month-jiba').on('change input', function () { updateBtnState('#am-select-emp', '#am-btn-open-jiba'); });
 
+        // chokyoトグルが操作されたかを追跡
+        var chokyoToggled = false;
+        $(document).on('change', '.am-chokyo-input', function () {
+            chokyoToggled = true;
+        });
+
         $(document).on('click', '#am-btn-save-jiba', function () {
-            var $btn      = $(this);
-            var empCode   = $btn.data('emp');
-            var month     = $btn.data('month');
-            var $msg      = $('#am-save-message-jiba');
+            var $btn = $(this);
+            var empCode = $btn.data('emp');
+            var month = $btn.data('month');
+            var $msg = $('#am-save-message-jiba');
             var rows = [];
             $('tbody tr[data-date]').each(function () {
                 var $tr = $(this);
                 rows.push({
-                    date:          $tr.data('date'),
-                    kintai_type:   $tr.find('.am-kintai-select').val() || '',
+                    date: $tr.data('date'),
+                    kintai_type: $tr.find('.am-kintai-select').val() || '',
                     furikae_label: $tr.data('furikae') || '',
-                    is_manual:     $tr.attr('data-auto') === 'false' ? 1 : 0,
-                    chokyo:        $tr.find('.am-chokyo-input').is(':checked') ? 1 : 0,
-                    hayatai_min:   parseMin($tr.find('.am-hayatai-input').val()),
-                    note:          $tr.find('.am-note-input').val() || '',
+                    is_manual: $tr.attr('data-auto') === 'false' ? 1 : 0,
+                    chokyo: $tr.find('.am-chokyo-input').is(':checked') ? 1 : 0,
+                    hayatai_min: parseMin($tr.find('.am-hayatai-input').val()),
+                    note: $tr.find('.am-note-input').val() || '',
                 });
             });
             $btn.prop('disabled', true).text('保存中...');
@@ -201,6 +263,13 @@
                 action: 'am_jiba_kintai_save', nonce: amData.nonce, employee_code: empCode, rows: rows,
             }, function (res) {
                 if (res.success) {
+                    // chokyoトグルが操作された場合はページリロードで確実に再描画
+                    if (chokyoToggled) {
+                        $btn.prop('disabled', false).html('<span class="dashicons dashicons-saved"></span> 保存（更新）');
+                        alert(res.data.saved + '件を保存しました。\nページを更新して反映します。');
+                        location.reload();
+                        return;
+                    }
                     $msg.text(res.data.saved + '件を保存しました').css({ color: '#2c5f2e', background: '#f0fff0', borderLeft: '4px solid #2c5f2e', padding: '8px 20px' }).show();
                     var p = { employee_code: empCode, year_month: month };
                     refreshSummary(p, 'am_jiba_get_monthly_summary');
@@ -221,7 +290,7 @@
     /* ================================================================
        休日マスタページ
        ================================================================ */
-    if (currentPage === 'attendance-manager-holiday') {
+    if (currentPage === 'attendance-manager-settings') {
 
         var _editingId = 0;
 
@@ -234,7 +303,7 @@
         function hmReloadTable() {
             $.post(amData.ajaxUrl, { action: 'am_holiday_get_rules', nonce: amData.nonce }, function (res) {
                 if (!res.success) return;
-                var $tbody    = $('#hm-rule-tbody');
+                var $tbody = $('#hm-rule-tbody');
                 var dowLabels = ['日', '月', '火', '水', '木', '金', '土'];
                 $tbody.empty();
                 if (!res.data.length) {
@@ -242,7 +311,7 @@
                     return;
                 }
                 $.each(res.data, function (i, r) {
-                    var weeks   = r.week_numbers.split(',').join('・');
+                    var weeks = r.week_numbers.split(',').join('・');
                     var bgToggle = r.is_active == 1 ? '#aaa' : '#2c5f2e';
                     $tbody.append(
                         '<tr data-id="' + r.id + '">' +
@@ -262,8 +331,8 @@
 
         $(document).on('click', '#hm-btn-save', function () {
             var affilId = $('#hm-affiliation').val();
-            var dow     = $('#hm-dow').val();
-            var weeks   = $('#hm-weeks').val().trim();
+            var dow = $('#hm-dow').val();
+            var weeks = $('#hm-weeks').val().trim();
             if (!affilId || weeks === '') { hmShowMessage('所属と対象週は必須です', true); return; }
             $.post(amData.ajaxUrl, { action: 'am_holiday_save_rule', nonce: amData.nonce, id: _editingId, affiliation_id: affilId, day_of_week: dow, week_numbers: weeks }, function (res) {
                 if (res.success) { hmShowMessage('保存しました', false); hmResetForm(); hmReloadTable(); }
@@ -295,6 +364,152 @@
             if (!window.confirm('このルールを削除しますか？')) return;
             $.post(amData.ajaxUrl, { action: 'am_holiday_delete_rule', nonce: amData.nonce, id: parseInt($(this).data('id')) }, function (res) { if (res.success) hmReloadTable(); });
         });
+
+        /* ================================================================
+           種別管理
+           ================================================================ */
+
+        function jtLoad() {
+            $.post(amData.ajaxUrl, { action: 'am_jobtype_get', nonce: amData.nonce }, function (res) {
+                $('#jt-loading').hide();
+                if (!res.success || !res.data.length) {
+                    $('#jt-empty').show();
+                    return;
+                }
+
+                var $tbody = $('#jt-tbody').empty();
+                $.each(res.data, function (i, jt) {
+                    var isChokyo = jt.category === 'chokyo';
+                    var isJiba = jt.category === 'jiba';
+                    var unset = jt.category === '';
+
+                    var $tr = $(
+                        '<tr data-name="' + $('<span>').text(jt.name).html() + '">' +
+                        '<td style="text-align:left;padding-left:20px;font-weight:600;">' + $('<span>').text(jt.name).html() + '</td>' +
+                        '<td style="text-align:center;">' +
+                        '<label style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;">' +
+                        '<input type="radio" name="jt_cat_' + i + '" value="chokyo" ' + (isChokyo ? 'checked' : '') + '> 長距離' +
+                        '</label></td>' +
+                        '<td style="text-align:center;">' +
+                        '<label style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;">' +
+                        '<input type="radio" name="jt_cat_' + i + '" value="jiba" ' + (isJiba ? 'checked' : '') + '> 地場・事務' +
+                        '</label></td>' +
+                        '<td style="text-align:center;">' +
+                        '<span class="jt-status ' + (unset ? 'jt-unset' : 'jt-set') + '">' +
+                        (unset ? '未設定' : '設定済') + '</span>' +
+                        '</td>' +
+                        '</tr>'
+                    );
+                    $tbody.append($tr);
+                });
+
+                $('#jt-table').show();
+            });
+        }
+
+        // ラジオ変更 → 即時保存
+        $(document).on('change', '#jt-tbody input[type="radio"]', function () {
+            var $radio = $(this);
+            var jobName = $radio.closest('tr').data('name');
+            var category = $radio.val();
+            var $msg = $('#jt-message');
+
+            $.post(amData.ajaxUrl, {
+                action: 'am_jobtype_save',
+                nonce: amData.nonce,
+                job_type_name: jobName,
+                category: category,
+            }, function (res) {
+                if (res.success) {
+                    // ステータスバッジを更新
+                    var $span = $radio.closest('tr').find('.jt-status');
+                    $span.text('設定済').removeClass('jt-unset').addClass('jt-set');
+                    $msg.text('「' + jobName + '」を保存しました')
+                        .css({ color: '#2c5f2e', background: '#f0fff0', borderLeft: '4px solid #2c5f2e', padding: '8px 20px' })
+                        .show();
+                } else {
+                    $msg.text('保存に失敗しました：' + (res.data.message || ''))
+                        .css({ color: '#7a1a1a', background: '#fff0f0', borderLeft: '4px solid #d63638', padding: '8px 20px' })
+                        .show();
+                }
+                setTimeout(function () { $msg.fadeOut(); }, 3000);
+            });
+        });
+
+        jtLoad();
+    }
+
+    /* ================================================================
+       集計一覧ページ
+       ================================================================ */
+    if (currentPage === 'attendance-manager-summary') {
+
+        var slEscHtml = function (str) {
+            return $('<span>').text(str == null ? '' : String(str)).html();
+        };
+
+        var slLoad = function () {
+            var month = $('#am-sl-month').val();
+            if (!month) return;
+
+            $('#am-sl-loading').show();
+            $('#am-sl-error').hide();
+            $('#am-sl-table-wrap').hide();
+
+            $.post(amData.ajaxUrl, {
+                action: 'am_summary_list_get',
+                nonce: amData.nonce,
+                year_month: month
+            }, function (res) {
+                $('#am-sl-loading').hide();
+                $('#am-sl-table-wrap').show();
+
+                if (!res.success) {
+                    $('#am-sl-error').text(res.data ? res.data.message : '読み込みに失敗しました').show();
+                    return;
+                }
+
+                var rows = res.data;
+                if (!rows.length) {
+                    $('#am-sl-tbody').html('<tr><td colspan="10" style="text-align:center;color:#999;padding:30px;">対象月のデータがありません</td></tr>');
+                    return;
+                }
+
+                var html = '';
+                $.each(rows, function (_, r) {
+                    var paidConsumed  = r.paid_has_data
+                        ? parseFloat(r.paid_consumed).toFixed(1) + '<span class="am-ms-unit">日</span>'
+                        : '<span class="am-ms-na">―</span>';
+                    var paidRemaining = r.paid_has_data
+                        ? parseFloat(r.paid_remaining).toFixed(1) + '<span class="am-ms-unit">日</span>'
+                        : '<span class="am-ms-na">―</span>';
+                    var hayataiHtml   = r.hayatai_str
+                        ? slEscHtml(r.hayatai_str)
+                        : '<span class="am-ms-na">―</span>';
+
+                    html += '<tr>';
+                    html += '<td class="am-sl-code">' + slEscHtml(r.employee_code) + '</td>';
+                    html += '<td class="am-sl-name">' + slEscHtml(r.name) + '</td>';
+                    html += '<td class="am-sl-num">' + r.attendance + '<span class="am-ms-unit">日</span></td>';
+                    html += '<td class="am-sl-num' + (r.absent > 0 ? ' am-ms-alert' : '') + '">' + r.absent + '<span class="am-ms-unit">日</span></td>';
+                    html += '<td class="am-sl-num' + (r.holiday_work > 0 ? ' am-ms-warn' : '') + '">' + r.holiday_work + '<span class="am-ms-unit">日</span></td>';
+                    html += '<td class="am-sl-num">' + paidConsumed + '</td>';
+                    html += '<td class="am-sl-num">' + paidRemaining + '</td>';
+                    html += '<td class="am-sl-num">' + slEscHtml(r.labor_str) + '</td>';
+                    html += '<td class="am-sl-num' + (r.hayatai_min > 0 ? ' am-ms-warn' : '') + '">' + hayataiHtml + '</td>';
+                    html += '<td class="am-sl-num' + (r.overtime_min > 0 ? ' am-ms-over' : '') + '">' + slEscHtml(r.overtime_str) + '</td>';
+                    html += '</tr>';
+                });
+
+                $('#am-sl-tbody').html(html);
+            }).fail(function () {
+                $('#am-sl-loading').hide();
+                $('#am-sl-table-wrap').show();
+                $('#am-sl-error').text('通信エラーが発生しました').show();
+            });
+        };
+
+        $(document).on('click', '#am-sl-load', slLoad);
     }
 
 })(jQuery);

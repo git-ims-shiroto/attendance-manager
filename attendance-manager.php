@@ -2,13 +2,13 @@
 /**
  * Plugin Name: 勤怠管理
  * Description: 長距離ドライバー・事務・地場の勤怠データを管理するプラグイン
- * Version:     1.0.0
+ * Version:     1.1.0
  * Author:      有限会社たんぽぽ運送
  */
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-if ( ! defined( 'AM_VERSION' ) )    define( 'AM_VERSION',    '1.0.0' );
+if ( ! defined( 'AM_VERSION' ) )    define( 'AM_VERSION',    '1.1.0' );
 if ( ! defined( 'AM_PLUGIN_DIR' ) ) define( 'AM_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 if ( ! defined( 'AM_PLUGIN_URL' ) ) define( 'AM_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -30,22 +30,29 @@ class Tanpopo_AttendanceManager {
         register_activation_hook( __FILE__,  [ $this, 'activate' ] );
 
         // --- 長距離 AJAX ---
-        add_action( 'wp_ajax_am_chokyo_kintai_save',        [ 'AM_Ajax', 'chokyo_kintai_save' ] );
+        add_action( 'wp_ajax_am_chokyo_kintai_save',         [ 'AM_Ajax', 'chokyo_kintai_save' ] );
         add_action( 'wp_ajax_am_chokyo_get_monthly_summary', [ 'AM_Ajax', 'chokyo_get_monthly_summary' ] );
-        add_action( 'wp_ajax_am_chokyo_get_daily_rows',     [ 'AM_Ajax', 'chokyo_get_daily_rows' ] );
-        add_action( 'wp_ajax_am_chokyo_get_weekly_rows',    [ 'AM_Ajax', 'chokyo_get_weekly_rows' ] );
+        add_action( 'wp_ajax_am_chokyo_get_daily_rows',      [ 'AM_Ajax', 'chokyo_get_daily_rows' ] );
+        add_action( 'wp_ajax_am_chokyo_get_weekly_rows',     [ 'AM_Ajax', 'chokyo_get_weekly_rows' ] );
 
         // --- 地場・事務 AJAX ---
-        add_action( 'wp_ajax_am_jiba_kintai_save',          [ 'AM_Ajax', 'jiba_kintai_save' ] );
-        add_action( 'wp_ajax_am_jiba_get_monthly_summary',  [ 'AM_Ajax', 'jiba_get_monthly_summary' ] );
-        add_action( 'wp_ajax_am_jiba_get_daily_rows',       [ 'AM_Ajax', 'jiba_get_daily_rows' ] );
-        add_action( 'wp_ajax_am_jiba_get_weekly_rows',      [ 'AM_Ajax', 'jiba_get_weekly_rows' ] );
+        add_action( 'wp_ajax_am_jiba_kintai_save',           [ 'AM_Ajax', 'jiba_kintai_save' ] );
+        add_action( 'wp_ajax_am_jiba_get_monthly_summary',   [ 'AM_Ajax', 'jiba_get_monthly_summary' ] );
+        add_action( 'wp_ajax_am_jiba_get_daily_rows',        [ 'AM_Ajax', 'jiba_get_daily_rows' ] );
+        add_action( 'wp_ajax_am_jiba_get_weekly_rows',       [ 'AM_Ajax', 'jiba_get_weekly_rows' ] );
 
-        // --- 休日マスタ AJAX（共通） ---
-        add_action( 'wp_ajax_am_holiday_get_rules',   [ 'AM_Ajax', 'holiday_get_rules' ] );
-        add_action( 'wp_ajax_am_holiday_save_rule',   [ 'AM_Ajax', 'holiday_save_rule' ] );
-        add_action( 'wp_ajax_am_holiday_delete_rule', [ 'AM_Ajax', 'holiday_delete_rule' ] );
-        add_action( 'wp_ajax_am_holiday_toggle_rule', [ 'AM_Ajax', 'holiday_toggle_rule' ] );
+        // --- 休日マスタ AJAX ---
+        add_action( 'wp_ajax_am_holiday_get_rules',          [ 'AM_Ajax', 'holiday_get_rules' ] );
+        add_action( 'wp_ajax_am_holiday_save_rule',          [ 'AM_Ajax', 'holiday_save_rule' ] );
+        add_action( 'wp_ajax_am_holiday_delete_rule',        [ 'AM_Ajax', 'holiday_delete_rule' ] );
+        add_action( 'wp_ajax_am_holiday_toggle_rule',        [ 'AM_Ajax', 'holiday_toggle_rule' ] );
+
+        // --- 種別管理 AJAX ---
+        add_action( 'wp_ajax_am_jobtype_get',                [ 'AM_Ajax', 'jobtype_get' ] );
+        add_action( 'wp_ajax_am_jobtype_save',               [ 'AM_Ajax', 'jobtype_save' ] );
+
+        // --- 集計一覧 AJAX ---
+        add_action( 'wp_ajax_am_summary_list_get',           [ 'AM_Ajax', 'summary_list_get' ] );
     }
 
     public static function format_min( $min ) {
@@ -139,6 +146,16 @@ class Tanpopo_AttendanceManager {
             PRIMARY KEY (`id`),
             UNIQUE KEY `uq_affil_rule` (`affiliation_id`, `day_of_week`, `week_numbers`)
         ) {$charset};" );
+
+        // 職種→管理区分マッピング
+        dbDelta( "CREATE TABLE IF NOT EXISTS `{$wpdb->prefix}am_job_type_mapping` (
+            `id`            INT UNSIGNED NOT NULL AUTO_INCREMENT,
+            `job_type_name` VARCHAR(50)  NOT NULL COMMENT '職種名（emp_masterのjob_type_nameと一致）',
+            `category`      VARCHAR(10)  NOT NULL DEFAULT 'jiba' COMMENT 'chokyo=長距離 jiba=地場・事務',
+            `updated_at`    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (`id`),
+            UNIQUE KEY `uq_job_type` (`job_type_name`)
+        ) {$charset};" );
     }
 
     /* ---------------------------------------------------------------
@@ -152,6 +169,7 @@ class Tanpopo_AttendanceManager {
             $wpdb->prefix . 'am_jiba_carryover',
             $wpdb->prefix . 'am_jiba_kintai_log',
             $wpdb->prefix . 'am_holiday_rules',
+            $wpdb->prefix . 'am_job_type_mapping',
         ];
         foreach ( $tables as $t ) {
             if ( ! $wpdb->get_var( "SHOW TABLES LIKE '{$t}'" ) ) {
@@ -171,7 +189,7 @@ class Tanpopo_AttendanceManager {
             'manage_options',
             'attendance-manager',
             [ $this, 'render_chokyo_page' ],
-            'dashicons-calendar-alt
+            'dashicons-calendar-alt',
             28
         );
         add_submenu_page(
@@ -185,9 +203,14 @@ class Tanpopo_AttendanceManager {
             [ $this, 'render_jiba_page' ]
         );
         add_submenu_page(
-            'attendance-manager', '休日マスタ設定', '休日マスタ設定',
-            'manage_options', 'attendance-manager-holiday',
-            [ $this, 'render_holiday_page' ]
+            'attendance-manager', '集計一覧', '集計一覧',
+            'manage_options', 'attendance-manager-summary',
+            [ $this, 'render_summary_list_page' ]
+        );
+        add_submenu_page(
+            'attendance-manager', '設定', '設定',
+            'manage_options', 'attendance-manager-settings',
+            [ $this, 'render_settings_page' ]
         );
     }
 
@@ -195,8 +218,8 @@ class Tanpopo_AttendanceManager {
      * アセット読み込み
      * ------------------------------------------------------------- */
     public function enqueue_assets() {
-        $page = isset( $_GET['page'] ) ? sanitize_text_field( $_GET['page'] ) : '';
-        $pages = [ 'attendance-manager', 'attendance-manager-jiba', 'attendance-manager-holiday' ];
+        $page  = isset( $_GET['page'] ) ? sanitize_text_field( $_GET['page'] ) : '';
+        $pages = [ 'attendance-manager', 'attendance-manager-jiba', 'attendance-manager-summary', 'attendance-manager-settings' ];
         if ( ! in_array( $page, $pages, true ) ) return;
 
         wp_enqueue_style(  'am-admin', AM_PLUGIN_URL . 'assets/css/admin.css', [], AM_VERSION );
@@ -213,17 +236,15 @@ class Tanpopo_AttendanceManager {
      * 長距離 集計表示
      * ------------------------------------------------------------- */
     public function render_chokyo_page() {
-        $result    = AM_DB::get_employees_from_kousoku();
+        $result    = AM_DB::get_employees_by_category( 'chokyo' );
         $employees = $result['employees'];
         $db_error  = $result['error'];
 
         $selected_crew  = isset( $_GET['am_crew'] )  ? sanitize_text_field( wp_unslash( $_GET['am_crew'] ) )  : '';
         $selected_month = isset( $_GET['am_month'] ) ? sanitize_text_field( wp_unslash( $_GET['am_month'] ) ) : date( 'Y-m' );
 
-        $emp_info        = null;
-        $monthly_rows    = [];
-        $weekly          = null;
-        $monthly_summary = null;
+        $emp_info = $monthly_rows = $weekly = $monthly_summary = null;
+        $monthly_rows = [];
 
         if ( $selected_crew !== '' && $selected_month !== '' ) {
             $emp_info        = AM_DB::get_emp_info_by_crew( $selected_crew );
@@ -242,17 +263,15 @@ class Tanpopo_AttendanceManager {
      * 地場・事務 集計表示
      * ------------------------------------------------------------- */
     public function render_jiba_page() {
-        $result    = AM_DB::get_employees_from_mat();
+        $result    = AM_DB::get_employees_by_category( 'jiba' );
         $employees = $result['employees'];
         $db_error  = $result['error'];
 
         $selected_emp   = isset( $_GET['am_emp'] )   ? sanitize_text_field( wp_unslash( $_GET['am_emp'] ) )   : '';
         $selected_month = isset( $_GET['am_month'] ) ? sanitize_text_field( wp_unslash( $_GET['am_month'] ) ) : date( 'Y-m' );
 
-        $emp_info        = null;
-        $monthly_rows    = [];
-        $weekly          = null;
-        $monthly_summary = null;
+        $emp_info = $monthly_rows = $weekly = $monthly_summary = null;
+        $monthly_rows = [];
 
         if ( $selected_emp !== '' && $selected_month !== '' ) {
             $emp_info        = AM_DB::get_emp_info_by_code( $selected_emp );
@@ -268,10 +287,20 @@ class Tanpopo_AttendanceManager {
     }
 
     /* ---------------------------------------------------------------
-     * 休日マスタ設定
+     * 集計一覧
      * ------------------------------------------------------------- */
-    public function render_holiday_page() {
+    public function render_summary_list_page() {
+        $selected_month = isset( $_GET['am_month'] ) ? sanitize_text_field( wp_unslash( $_GET['am_month'] ) ) : date( 'Y-m' );
+        include AM_PLUGIN_DIR . 'templates/summary-list-page.php';
+    }
+
+    /* ---------------------------------------------------------------
+     * 設定画面（休日マスタ + 種別管理）
+     * ------------------------------------------------------------- */
+    public function render_settings_page() {
         global $wpdb;
+
+        // 休日マスタ用データ
         if ( function_exists( 'emp_get_affiliations' ) ) {
             $affiliations = emp_get_affiliations();
         } else {
@@ -281,7 +310,12 @@ class Tanpopo_AttendanceManager {
         }
         $rules      = AM_DB::get_holiday_rules();
         $dow_labels = [ '日', '月', '火', '水', '木', '金', '土' ];
-        include AM_PLUGIN_DIR . 'templates/holiday-page.php';
+
+        // 種別管理用データ
+        $job_types = function_exists( 'emp_get_job_types' ) ? emp_get_job_types() : [];
+        $mappings  = AM_DB::get_job_type_mappings();
+
+        include AM_PLUGIN_DIR . 'templates/settings-page.php';
     }
 }
 
