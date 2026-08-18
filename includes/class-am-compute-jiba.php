@@ -80,6 +80,7 @@ class AM_Compute_Jiba {
         $affiliation_id = AM_DB::get_affiliation_id_by_code( $employee_code );
         $shitei_rules   = ( AM_DB::get_active_rules_by_affiliation() )[ $affiliation_id ] ?? [];
         $saved_kintai   = AM_DB::get_jiba_saved_kintai( $employee_code, $year_month );
+        $paidleave_dates = AM_DB::get_paidleave_consumed_dates( $employee_code, $year_month );
 
         $dow_ja = [ 'Sun'=>'日','Mon'=>'月','Tue'=>'火','Wed'=>'水','Thu'=>'木','Fri'=>'金','Sat'=>'土' ];
         $rows = []; $cursor = new DateTime( $start_date ); $last = new DateTime( $end_date );
@@ -220,6 +221,15 @@ class AM_Compute_Jiba {
             } else {
                 $r['end_time']    = $end_time;
                 $r['kousoku_min'] = $r['labor_min'] = $r['drive_min'] = $r['cargo_min'] = $r['break_calc_min'] = $r['overtime_min'] = $r['midnight_min'] = null;
+            }
+        }
+        unset( $r );
+
+        // 承認済み有給の消化日を勤怠種別へ反映（手動設定行は保持）
+        foreach ( $rows as &$r ) {
+            if ( ! $r['is_manual'] && isset( $paidleave_dates[ $r['date'] ] ) ) {
+                $r['default_kintai'] = '有給';
+                $r['furikae_label']  = '';
             }
         }
         unset( $r );
