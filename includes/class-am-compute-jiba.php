@@ -40,7 +40,7 @@ class AM_Compute_Jiba {
             $mat_by_date = (array) mat_get_daily_by_month( $employee_code, $year_month );
         } else {
             $mat_rows = $wpdb->get_results( $wpdb->prepare(
-                "SELECT work_date, clock_in, clock_out, break_minutes
+                "SELECT *
                  FROM `{$wpdb->prefix}mat_attendance_daily`
                  WHERE employee_code COLLATE utf8mb4_unicode_520_ci = %s
                    AND work_date BETWEEN %s AND %s",
@@ -144,7 +144,8 @@ class AM_Compute_Jiba {
                 'date' => $date_str, 'dow' => $dow, 'dow_num' => $dow_num,
                 'is_sun' => $is_sun, 'is_sat' => $is_sat, 'is_shitei_holiday' => $is_shitei,
                 'has_data' => $has_data, 'default_kintai' => $default_kintai,
-                'furikae_label' => '', 'is_manual' => false, 'chokyo' => false,
+                'furikae_label' => '', 'is_manual' => false,
+                'chokyo' => ! empty( $mat['long_distance'] ),
                 'hayatai_min' => 0, 'note' => '',
                 'start_time' => $start_time, 'end_time' => $end_time,
                 'kousoku_min' => $kousoku_min, 'labor_min' => $labor_min,
@@ -163,7 +164,9 @@ class AM_Compute_Jiba {
             if ( $saved === null ) continue;
 
             $r['is_manual']   = (bool) $saved['is_manual'];
-            $r['chokyo']      = (bool) ( $saved['chokyo'] ?? false );
+            // 打刻時の長距離フラグはページ読み込み時に必ず自動反映する。
+            // 保存済みの手動ONも維持し、どちらかがONなら長距離として扱う。
+            $r['chokyo']      = (bool) $r['chokyo'] || (bool) ( $saved['chokyo'] ?? false );
             $r['hayatai_min'] = (int)  ( $saved['hayatai_min'] ?? 0 );
             $r['note']        = $saved['note'] ?? '';
 
