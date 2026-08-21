@@ -65,6 +65,7 @@ class AM_Ajax {
         $summary['labor_str']    = AM_Compute_Chokyo::format_min( $summary['labor_min'] );
         $summary['hayatai_str']  = $summary['hayatai_min'] > 0 ? AM_Compute_Chokyo::format_min( $summary['hayatai_min'] ) : '';
         $summary['overtime_str'] = AM_Compute_Chokyo::format_min( $summary['overtime_min'] );
+        $summary['unmatched_houtei_labor_str'] = AM_Compute_Chokyo::format_min( $summary['unmatched_houtei_labor_min'] );
         wp_send_json_success( $summary );
     }
 
@@ -173,6 +174,7 @@ class AM_Ajax {
         $summary['labor_str']    = AM_Compute_Chokyo::format_min( $summary['labor_min'] );
         $summary['hayatai_str']  = $summary['hayatai_min'] > 0 ? AM_Compute_Chokyo::format_min( $summary['hayatai_min'] ) : '';
         $summary['overtime_str'] = AM_Compute_Chokyo::format_min( $summary['overtime_min'] );
+        $summary['unmatched_houtei_labor_str'] = AM_Compute_Chokyo::format_min( $summary['unmatched_houtei_labor_min'] );
         wp_send_json_success( $summary );
     }
 
@@ -366,6 +368,8 @@ class AM_Ajax {
             'attendance'     => $summary['attendance']     ?? 0,
             'absent'         => $summary['absent']         ?? 0,
             'holiday_work'   => $summary['holiday_work']   ?? 0,
+            'unmatched_houtei_days' => $summary['unmatched_houtei_days'] ?? 0,
+            'unmatched_houtei_labor_min' => $summary['unmatched_houtei_labor_min'] ?? 0,
             'paid_consumed'  => $summary['paid_consumed']  ?? 0,
             'paid_remaining' => $summary['paid_remaining'] ?? 0,
             'paid_has_data'  => $summary['paid_has_data']  ?? false,
@@ -375,6 +379,7 @@ class AM_Ajax {
             'labor_str'      => AM_Compute_Chokyo::format_min( $labor_min ),
             'hayatai_str'    => $hayatai_min > 0 ? AM_Compute_Chokyo::format_min( $hayatai_min ) : '',
             'overtime_str'   => AM_Compute_Chokyo::format_min( $overtime_min ),
+            'unmatched_houtei_labor_str' => AM_Compute_Chokyo::format_min( $summary['unmatched_houtei_labor_min'] ?? 0 ),
         ];
     }
 

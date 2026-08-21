@@ -28,6 +28,7 @@
             $('[data-ms="attendance"]').html(s.attendance + '<span class="am-ms-unit">日</span>');
             $('[data-ms="absent"]').html(s.absent + '<span class="am-ms-unit">日</span>').toggleClass('am-ms-alert', s.absent > 0);
             $('[data-ms="holiday_work"]').html(s.holiday_work + '<span class="am-ms-unit">日</span>').toggleClass('am-ms-warn', s.holiday_work > 0);
+            $('[data-ms="unmatched_houtei"]').html(s.unmatched_houtei_days + '<span class="am-ms-unit">日</span> / ' + s.unmatched_houtei_labor_str).toggleClass('am-ms-warn', s.unmatched_houtei_days > 0);
             $('[data-ms="paid_consumed"]').html(s.paid_has_data ? parseFloat(s.paid_consumed).toFixed(1) + '<span class="am-ms-unit">日</span>' : '<span class="am-ms-na">―</span>');
             $('[data-ms="paid_remaining"]').html(s.paid_has_data ? parseFloat(s.paid_remaining).toFixed(1) + '<span class="am-ms-unit">日</span>' : '<span class="am-ms-na">―</span>');
             $('[data-ms="labor"]').html(s.labor_str);
@@ -471,7 +472,7 @@
 
                 var rows = res.data;
                 if (!rows.length) {
-                    $('#am-sl-tbody').html('<tr><td colspan="10" style="text-align:center;color:#999;padding:30px;">対象月のデータがありません</td></tr>');
+                    $('#am-sl-tbody').html('<tr><td colspan="11" style="text-align:center;color:#999;padding:30px;">対象月のデータがありません</td></tr>');
                     return;
                 }
 
@@ -493,6 +494,7 @@
                     html += '<td class="am-sl-num">' + r.attendance + '<span class="am-ms-unit">日</span></td>';
                     html += '<td class="am-sl-num' + (r.absent > 0 ? ' am-ms-alert' : '') + '">' + r.absent + '<span class="am-ms-unit">日</span></td>';
                     html += '<td class="am-sl-num' + (r.holiday_work > 0 ? ' am-ms-warn' : '') + '">' + r.holiday_work + '<span class="am-ms-unit">日</span></td>';
+                    html += '<td class="am-sl-num' + (r.unmatched_houtei_days > 0 ? ' am-ms-warn' : '') + '">' + r.unmatched_houtei_days + '<span class="am-ms-unit">日</span> / ' + slEscHtml(r.unmatched_houtei_labor_str) + '</td>';
                     html += '<td class="am-sl-num">' + paidConsumed + '</td>';
                     html += '<td class="am-sl-num">' + paidRemaining + '</td>';
                     html += '<td class="am-sl-num">' + slEscHtml(r.labor_str) + '</td>';

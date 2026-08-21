@@ -287,6 +287,8 @@ class AM_Compute_Jiba {
         }
         unset( $r );
 
+        $rows = AM_Compute_Chokyo::mark_unmatched_houtei_work( $rows );
+
         if ( ! empty( $rows ) ) {
             $pair_alerts = $rows[0]['_alerts'] ?? [];
             if ( $houtei_kinmu_count !== $houtei_furi_count ) {
@@ -327,16 +329,23 @@ class AM_Compute_Jiba {
 
     public static function get_monthly_summary( $monthly_rows, $weekly, $employee_code, $year_month ) {
         $attendance = $absent = $holiday_work = $hayatai_min = 0;
+        $unmatched_houtei_days = $unmatched_houtei_labor_min = 0;
         foreach ( $monthly_rows as $r ) {
             $kt = $r['default_kintai'] ?? '';
             if ( in_array( $kt, [ '出勤', '緊急出動' ], true ) ) $attendance++;
             if ( $kt === '欠勤' ) $absent++;
             if ( ( $r['houtei_kinmu'] ?? false ) || ( $r['shitei_kinmu'] ?? false ) ) $holiday_work++;
+            if ( ! empty( $r['unmatched_houtei_kinmu'] ) ) {
+                $unmatched_houtei_days++;
+                $unmatched_houtei_labor_min += (int) ( $r['labor_min'] ?? 0 );
+            }
             $hayatai_min += (int) ( $r['hayatai_min'] ?? 0 );
         }
         $paidleave = AM_DB::get_paidleave_summary( $employee_code, $year_month );
         return [
             'attendance'     => $attendance, 'absent' => $absent, 'holiday_work' => $holiday_work,
+            'unmatched_houtei_days' => $unmatched_houtei_days,
+            'unmatched_houtei_labor_min' => $unmatched_houtei_labor_min,
             'paid_consumed'  => $paidleave['consumed'], 'paid_remaining' => $paidleave['remaining'],
             'paid_has_data'  => $paidleave['has_data'],
             'labor_min'      => $weekly ? $weekly['total']['labor_min']          : null,

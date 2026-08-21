@@ -307,6 +307,10 @@ class AM_Compute_Chokyo {
         }
         unset( $r );
 
+        // 法定休出勤と法定振替休を日付順に対応付ける。
+        // 対応しない法定休出勤は、日別表示には残すが週次の残業計算から除外する。
+        $rows = self::mark_unmatched_houtei_work( $rows );
+
         // 法定休出勤 ↔ 法定振替休 のペア確認
         if ( ! empty( $rows ) ) {
             $pair_alerts = $rows[0]['_alerts'] ?? [];
@@ -330,6 +334,33 @@ class AM_Compute_Chokyo {
             }
             $rows[0]['_alerts'] = $pair_alerts;
         }
+
+        return $rows;
+    }
+
+    /**
+     * 法定振替休の数だけ、古い法定休出勤から順に振替済みとして対応付ける。
+     * 現行のペア警告と同じく、対応関係は月内の日数で判定する。
+     */
+    public static function mark_unmatched_houtei_work( $rows ) {
+        $remaining_furikae = 0;
+        foreach ( $rows as $r ) {
+            if ( ( $r['default_kintai'] ?? '' ) === '法定振替休' ) $remaining_furikae++;
+        }
+
+        foreach ( $rows as &$r ) {
+            $r['houtei_furikae_taken']      = false;
+            $r['unmatched_houtei_kinmu']    = false;
+            if ( empty( $r['houtei_kinmu'] ) ) continue;
+
+            if ( $remaining_furikae > 0 ) {
+                $r['houtei_furikae_taken'] = true;
+                $remaining_furikae--;
+            } else {
+                $r['unmatched_houtei_kinmu'] = true;
+            }
+        }
+        unset( $r );
 
         return $rows;
     }
@@ -461,6 +492,10 @@ class AM_Compute_Chokyo {
         $carry_days          = $carryover ? (int)$carryover['days']              : 0;
         $carry_overtime      = $carryover ? (int)$carryover['overtime_min']      : 0;
         $carry_week_overtime = $carryover ? (int)$carryover['week_overtime_min'] : 0;
+        // 旧データは列が未設定のため、従来の労働時間を週40時間判定に使用する。
+        $carry_overtime_labor = $carryover && isset( $carryover['overtime_labor_min'] )
+            ? (int) $carryover['overtime_labor_min']
+            : $carry_labor;
 
         $rows_by_date = [];
         foreach ( $monthly_rows as $r ) { $rows_by_date[ $r['date'] ] = $r; }
@@ -508,12 +543,13 @@ class AM_Compute_Chokyo {
 
             // sumの初期化
             $sum = array_fill_keys(
-                [ 'kousoku_min','labor_min','drive_min','cargo_min','midnight_min','overtime_min','days' ], 0
+                [ 'kousoku_min','labor_min','overtime_labor_min','drive_min','cargo_min','midnight_min','overtime_min','days' ], 0
             );
 
             // 第1週に前月繰越分を加算（週残業計算のため）
             if ( $is_first_week && $carry_days > 0 ) {
                 $sum['labor_min']    += $carry_labor;
+                $sum['overtime_labor_min'] += $carry_overtime_labor;
                 $sum['drive_min']    += $carry_drive;
                 $sum['cargo_min']    += $carry_cargo;
                 $sum['kousoku_min']  += $carry_kousoku;
@@ -531,7 +567,11 @@ class AM_Compute_Chokyo {
                         $sum['drive_min']    += (int)( $r['drive_min']    ?? 0 );
                         $sum['cargo_min']    += (int)( $r['cargo_min']    ?? 0 );
                         $sum['midnight_min'] += (int)( $r['midnight_min'] ?? 0 );
-                        $sum['overtime_min'] += (int)( $r['overtime_min'] ?? 0 );
+                        // 振替なしの法定休出勤は実績時間には含めるが、残業判定には含めない。
+                        if ( empty( $r['unmatched_houtei_kinmu'] ) ) {
+                            $sum['overtime_labor_min'] += (int)( $r['labor_min'] ?? 0 );
+                            $sum['overtime_min']       += (int)( $r['overtime_min'] ?? 0 );
+                        }
                     }
                     $sum['days']++;
                 }
@@ -539,7 +579,7 @@ class AM_Compute_Chokyo {
             }
 
             // 週残業 = 週の労働時間合計が40時間（2400分）超の分
-            $week_overtime      = $sum['labor_min'] > 2400 ? $sum['labor_min'] - 2400 : 0;
+            $week_overtime      = $sum['overtime_labor_min'] > 2400 ? $sum['overtime_labor_min'] - 2400 : 0;
             $confirmed_overtime = max( $sum['overtime_min'], $week_overtime );
 
             // 表示用の当月分のみのnet値（繰越分を除く）
@@ -560,6 +600,7 @@ class AM_Compute_Chokyo {
                 $next_month = date( 'Y-m', strtotime( $month_end_str . ' +1 month' ) );
                 $save_data  = [
                     'labor_min'         => $net_labor,
+                    'overtime_labor_min' => $sum['overtime_labor_min'] - ( $is_first_week ? $carry_overtime_labor : 0 ),
                     'drive_min'         => $net_drive,
                     'cargo_min'         => $net_cargo,
                     'kousoku_min'       => $net_kousoku,
@@ -627,16 +668,23 @@ class AM_Compute_Chokyo {
 
     public static function get_monthly_summary( $monthly_rows, $weekly, $crew_code, $year_month ) {
         $attendance = $absent = $holiday_work = $hayatai_min = 0;
+        $unmatched_houtei_days = $unmatched_houtei_labor_min = 0;
         foreach ( $monthly_rows as $r ) {
             $kt = $r['default_kintai'] ?? '';
             if ( in_array( $kt, [ '出勤', '緊急出動' ], true ) ) $attendance++;
             if ( $kt === '欠勤' ) $absent++;
             if ( ( $r['houtei_kinmu'] ?? false ) || ( $r['shitei_kinmu'] ?? false ) ) $holiday_work++;
+            if ( ! empty( $r['unmatched_houtei_kinmu'] ) ) {
+                $unmatched_houtei_days++;
+                $unmatched_houtei_labor_min += (int) ( $r['labor_min'] ?? 0 );
+            }
             $hayatai_min += (int) ( $r['hayatai_min'] ?? 0 );
         }
         $paidleave = AM_DB::get_paidleave_summary_by_crew( $crew_code, $year_month );
         return [
             'attendance'     => $attendance, 'absent' => $absent, 'holiday_work' => $holiday_work,
+            'unmatched_houtei_days' => $unmatched_houtei_days,
+            'unmatched_houtei_labor_min' => $unmatched_houtei_labor_min,
             'paid_consumed'  => $paidleave['consumed'], 'paid_remaining' => $paidleave['remaining'],
             'paid_has_data'  => $paidleave['has_data'],
             'labor_min'      => $weekly ? $weekly['total']['labor_min']          : null,

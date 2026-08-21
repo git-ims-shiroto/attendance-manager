@@ -44,6 +44,7 @@ $page_url = admin_url( 'admin.php?page=attendance-manager-summary' );
                         <th>出勤日数</th>
                         <th>欠勤日数</th>
                         <th>休日出勤日数</th>
+                        <th title="振替休がない法定休日出勤の日数と実労働時間">振替なし法定休出勤</th>
                         <th>有給消化日数</th>
                         <th>有給残日数</th>
                         <th>労働時間</th>
