@@ -2,13 +2,13 @@
 /**
  * Plugin Name: 勤怠管理
  * Description: 長距離ドライバー・事務・地場の勤怠データを管理するプラグイン
- * Version:     1.1.0
+ * Version:     1.1.1
  * Author:      有限会社たんぽぽ運送
  */
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-if ( ! defined( 'AM_VERSION' ) )    define( 'AM_VERSION',    '1.1.0' );
+if ( ! defined( 'AM_VERSION' ) )    define( 'AM_VERSION',    '1.1.1' );
 if ( ! defined( 'AM_PLUGIN_DIR' ) ) define( 'AM_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 if ( ! defined( 'AM_PLUGIN_URL' ) ) define( 'AM_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -73,6 +73,7 @@ class Tanpopo_AttendanceManager {
             `crew_code`         VARCHAR(20)      NOT NULL,
             `year_month`        CHAR(7)          NOT NULL,
             `labor_min`         INT              NOT NULL DEFAULT 0,
+            `overtime_labor_min` INT             NULL DEFAULT NULL,
             `drive_min`         INT              NOT NULL DEFAULT 0,
             `cargo_min`         INT              NOT NULL DEFAULT 0,
             `kousoku_min`       INT              NOT NULL DEFAULT 0,
@@ -107,6 +108,7 @@ class Tanpopo_AttendanceManager {
             `employee_code`     VARCHAR(20)      NOT NULL,
             `year_month`        CHAR(7)          NOT NULL,
             `labor_min`         INT              NOT NULL DEFAULT 0,
+            `overtime_labor_min` INT             NULL DEFAULT NULL,
             `drive_min`         INT              NOT NULL DEFAULT 0,
             `cargo_min`         INT              NOT NULL DEFAULT 0,
             `kousoku_min`       INT              NOT NULL DEFAULT 0,
@@ -176,6 +178,14 @@ class Tanpopo_AttendanceManager {
             if ( ! $wpdb->get_var( "SHOW TABLES LIKE '{$t}'" ) ) {
                 $this->activate();
                 break;
+            }
+        }
+
+        // 週40時間判定用の労働時間を、表示用の実労働時間と分けて保持する。
+        foreach ( [ $wpdb->prefix . 'am_chokyo_carryover', $wpdb->prefix . 'am_jiba_carryover' ] as $table ) {
+            if ( $wpdb->get_var( "SHOW TABLES LIKE '{$table}'" )
+                && ! $wpdb->get_var( "SHOW COLUMNS FROM `{$table}` LIKE 'overtime_labor_min'" ) ) {
+                $wpdb->query( "ALTER TABLE `{$table}` ADD `overtime_labor_min` INT NULL DEFAULT NULL AFTER `labor_min`" );
             }
         }
     }
