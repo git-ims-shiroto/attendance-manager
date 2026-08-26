@@ -2,13 +2,13 @@
 /**
  * Plugin Name: 勤怠管理
  * Description: 長距離ドライバー・事務・地場の勤怠データを管理するプラグイン
- * Version:     1.1.1
+ * Version:     1.2.0
  * Author:      有限会社たんぽぽ運送
  */
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-if ( ! defined( 'AM_VERSION' ) )    define( 'AM_VERSION',    '1.1.1' );
+if ( ! defined( 'AM_VERSION' ) )    define( 'AM_VERSION',    '1.2.0' );
 if ( ! defined( 'AM_PLUGIN_DIR' ) ) define( 'AM_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 if ( ! defined( 'AM_PLUGIN_URL' ) ) define( 'AM_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -70,6 +70,7 @@ class Tanpopo_AttendanceManager {
         // 長距離用繰越
         dbDelta( "CREATE TABLE IF NOT EXISTS `{$wpdb->prefix}am_chokyo_carryover` (
             `id`                INT UNSIGNED     NOT NULL AUTO_INCREMENT,
+            `employee_id`       INT UNSIGNED     NULL DEFAULT NULL,
             `crew_code`         VARCHAR(20)      NOT NULL,
             `year_month`        CHAR(7)          NOT NULL,
             `labor_min`         INT              NOT NULL DEFAULT 0,
@@ -83,12 +84,14 @@ class Tanpopo_AttendanceManager {
             `days`              TINYINT UNSIGNED NOT NULL DEFAULT 0,
             `updated_at`        DATETIME         NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             PRIMARY KEY (`id`),
-            UNIQUE KEY `uq_crew_month` (`crew_code`(20), `year_month`)
+            UNIQUE KEY `uq_crew_month` (`crew_code`(20), `year_month`),
+            KEY `idx_employee_month` (`employee_id`, `year_month`)
         ) {$charset};" );
 
         // 長距離用勤怠ログ
         dbDelta( "CREATE TABLE IF NOT EXISTS `{$wpdb->prefix}am_chokyo_kintai_log` (
             `id`             INT UNSIGNED NOT NULL AUTO_INCREMENT,
+            `employee_id`    INT UNSIGNED NULL DEFAULT NULL,
             `crew_code`      VARCHAR(20)  NOT NULL,
             `work_date`      DATE         NOT NULL,
             `kintai_type`    VARCHAR(20)  NOT NULL DEFAULT '',
@@ -99,7 +102,8 @@ class Tanpopo_AttendanceManager {
             `note`           VARCHAR(100) NOT NULL DEFAULT '',
             `updated_at`     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             PRIMARY KEY (`id`),
-            UNIQUE KEY `uq_crew_date` (`crew_code`(20), `work_date`)
+            UNIQUE KEY `uq_crew_date` (`crew_code`(20), `work_date`),
+            KEY `idx_employee_date` (`employee_id`, `work_date`)
         ) {$charset};" );
 
         // 地場・事務用繰越
@@ -188,6 +192,83 @@ class Tanpopo_AttendanceManager {
                 $wpdb->query( "ALTER TABLE `{$table}` ADD `overtime_labor_min` INT NULL DEFAULT NULL AFTER `labor_min`" );
             }
         }
+
+        $this->migrate_chokyo_employee_ids();
+    }
+
+    /**
+     * 長距離の保存データへ社員IDを追加し、一意に解決できる旧行だけを補完する。
+     */
+    private function migrate_chokyo_employee_ids() {
+        global $wpdb;
+        $log_table   = $wpdb->prefix . 'am_chokyo_kintai_log';
+        $carry_table = $wpdb->prefix . 'am_chokyo_carryover';
+
+        foreach ( array( $log_table => 'work_date', $carry_table => 'year_month' ) as $table => $suffix ) {
+            if ( ! $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ) ) continue;
+            if ( ! $wpdb->get_var( "SHOW COLUMNS FROM `{$table}` LIKE 'employee_id'" ) ) {
+                $wpdb->query( "ALTER TABLE `{$table}` ADD `employee_id` INT UNSIGNED NULL DEFAULT NULL AFTER `id`" );
+            }
+            $index_name = $suffix === 'work_date' ? 'idx_employee_date' : 'idx_employee_month';
+            if ( ! $wpdb->get_var( $wpdb->prepare( "SHOW INDEX FROM `{$table}` WHERE Key_name = %s", $index_name ) ) ) {
+                $wpdb->query( "ALTER TABLE `{$table}` ADD INDEX `{$index_name}` (`employee_id`, `{$suffix}`)" );
+            }
+        }
+
+        $history = $wpdb->prefix . 'emp_crew_code_history';
+        $has_history = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $history ) ) === $history;
+        if ( $has_history ) {
+            $wpdb->query(
+                "UPDATE `{$log_table}` target
+                 INNER JOIN (
+                     SELECT source.id, MIN(h.employee_id) AS employee_id
+                     FROM `{$log_table}` source
+                     INNER JOIN `{$history}` h
+                       ON h.crew_code COLLATE utf8mb4_unicode_520_ci = source.crew_code COLLATE utf8mb4_unicode_520_ci
+                     WHERE source.employee_id IS NULL
+                       AND (h.valid_from IS NULL OR h.valid_from <= source.work_date)
+                       AND (h.valid_to IS NULL OR h.valid_to >= source.work_date)
+                     GROUP BY source.id
+                     HAVING COUNT(DISTINCT h.employee_id) = 1
+                 ) mapped ON mapped.id = target.id
+                 SET target.employee_id = mapped.employee_id
+                 WHERE target.employee_id IS NULL"
+            );
+            $wpdb->query(
+                "UPDATE `{$carry_table}` target
+                 INNER JOIN (
+                     SELECT source.id, MIN(h.employee_id) AS employee_id
+                     FROM `{$carry_table}` source
+                     INNER JOIN `{$history}` h
+                       ON h.crew_code COLLATE utf8mb4_unicode_520_ci = source.crew_code COLLATE utf8mb4_unicode_520_ci
+                     WHERE source.employee_id IS NULL
+                       AND (h.valid_from IS NULL OR h.valid_from <= LAST_DAY(STR_TO_DATE(CONCAT(source.year_month, '-01'), '%Y-%m-%d')))
+                       AND (h.valid_to IS NULL OR h.valid_to >= STR_TO_DATE(CONCAT(source.year_month, '-01'), '%Y-%m-%d'))
+                     GROUP BY source.id
+                     HAVING COUNT(DISTINCT h.employee_id) = 1
+                 ) mapped ON mapped.id = target.id
+                 SET target.employee_id = mapped.employee_id
+                 WHERE target.employee_id IS NULL"
+            );
+        }
+
+        // 履歴テーブルがまだない旧構成だけ、現行masterから一意に補完する。
+        if ( ! $has_history ) {
+            foreach ( array( $log_table, $carry_table ) as $table ) {
+                $wpdb->query(
+                    "UPDATE `{$table}` target
+                     INNER JOIN (
+                         SELECT crew_code, MIN(id) AS employee_id
+                         FROM `{$wpdb->prefix}emp_master`
+                         WHERE crew_code IS NOT NULL AND crew_code <> ''
+                         GROUP BY crew_code
+                         HAVING COUNT(*) = 1
+                     ) mapped ON mapped.crew_code COLLATE utf8mb4_unicode_520_ci = target.crew_code COLLATE utf8mb4_unicode_520_ci
+                     SET target.employee_id = mapped.employee_id
+                     WHERE target.employee_id IS NULL"
+                );
+            }
+        }
     }
 
     /* ---------------------------------------------------------------
@@ -252,18 +333,30 @@ class Tanpopo_AttendanceManager {
         $employees = $result['employees'];
         $db_error  = $result['error'];
 
-        $selected_crew  = isset( $_GET['am_crew'] )  ? sanitize_text_field( wp_unslash( $_GET['am_crew'] ) )  : '';
+        $selected_employee_id = isset( $_GET['am_employee_id'] ) ? absint( $_GET['am_employee_id'] ) : 0;
+        // 旧URL（am_crew）からの互換解決。
+        if ( ! $selected_employee_id && isset( $_GET['am_crew'] ) ) {
+            $selected_employee_id = AM_DB::get_employee_id_by_crew( sanitize_text_field( wp_unslash( $_GET['am_crew'] ) ) );
+        }
         $selected_month = isset( $_GET['am_month'] ) ? sanitize_text_field( wp_unslash( $_GET['am_month'] ) ) : date( 'Y-m' );
 
         $emp_info = $monthly_rows = $weekly = $monthly_summary = null;
+        $used_crew_codes = [];
         $monthly_rows = [];
 
-        if ( $selected_crew !== '' && $selected_month !== '' ) {
-            $emp_info        = AM_DB::get_emp_info_by_crew( $selected_crew );
-            $monthly_rows    = AM_Compute_Chokyo::get_monthly_rows( $selected_crew, $selected_month, $emp_info['name'] );
-            $weekly          = AM_Compute_Chokyo::get_weekly_summary( $selected_crew, $selected_month, $monthly_rows );
+        if ( $selected_employee_id && $selected_month !== '' ) {
+            $emp_info = AM_DB::get_emp_info_by_id( $selected_employee_id );
+            if ( ! $emp_info ) wp_die( '社員が見つかりません。', '', [ 'response' => 404 ] );
+            $month_start = $selected_month . '-01';
+            $month_end = date( 'Y-m-t', strtotime( $month_start ) );
+            $code_history = AM_DB::get_crew_codes_for_period( $selected_employee_id, $month_start, $month_end );
+            $used_crew_codes = array_values( array_unique( array_filter( array_map( function( $row ) {
+                return $row['crew_code'] ?? '';
+            }, $code_history ) ) ) );
+            $monthly_rows    = AM_Compute_Chokyo::get_monthly_rows( $selected_employee_id, $selected_month, $emp_info['name'] );
+            $weekly          = AM_Compute_Chokyo::get_weekly_summary( $selected_employee_id, $selected_month, $monthly_rows );
             if ( ! empty( $monthly_rows ) ) {
-                $monthly_summary = AM_Compute_Chokyo::get_monthly_summary( $monthly_rows, $weekly, $selected_crew, $selected_month );
+                $monthly_summary = AM_Compute_Chokyo::get_monthly_summary( $monthly_rows, $weekly, $selected_employee_id, $selected_month );
             }
         }
 
@@ -329,6 +422,8 @@ class Tanpopo_AttendanceManager {
         // 種別管理用データ
         $job_types = function_exists( 'emp_get_job_types' ) ? emp_get_job_types() : [];
         $mappings  = AM_DB::get_job_type_mappings();
+        $unlinked_crew_codes = AM_DB::get_unlinked_crew_codes();
+        $crew_migration_status = AM_DB::get_crew_migration_status();
 
         include AM_PLUGIN_DIR . 'templates/settings-page.php';
     }

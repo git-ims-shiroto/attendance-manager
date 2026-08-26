@@ -148,7 +148,7 @@
         var affil = $(this).data('affil');
         $('.am-chip').removeClass('am-chip-active');
         $(this).addClass('am-chip-active');
-        var $select = $('.am-select[name="am_crew"], .am-select[name="am_emp"]');
+        var $select = $('.am-select[name="am_employee_id"], .am-select[name="am_emp"]');
         var $options = $select.find('option[data-affil]');
         if (affil === 'all') { $options.show(); }
         else { $options.each(function () { $(this).data('affil') == affil ? $(this).show() : $(this).hide(); }); }
@@ -178,7 +178,7 @@
 
         $(document).on('click', '#am-btn-save', function () {
             var $btn = $(this);
-            var crewCode = $btn.data('crew');
+            var employeeId = $btn.data('employee-id');
             var month = $btn.data('month');
             var $msg = $('#am-save-message');
             var rows = [];
@@ -197,7 +197,7 @@
             $btn.prop('disabled', true).text('保存中...');
             $msg.hide();
             $.post(amData.ajaxUrl, {
-                action: 'am_chokyo_kintai_save', nonce: amData.nonce, crew_code: crewCode, rows: rows,
+                action: 'am_chokyo_kintai_save', nonce: amData.nonce, employee_id: employeeId, rows: rows,
             }, function (res) {
                 if (res.success) {
                     // jibaトグルが操作された場合はページリロードで確実に再描画
@@ -209,7 +209,7 @@
                         return;
                     }
                     $msg.text(res.data.saved + '件を保存しました').css({ color: '#2c5f2e', background: '#f0fff0', borderLeft: '4px solid #2c5f2e', padding: '8px 20px' }).show();
-                    var p = { crew_code: crewCode, year_month: month };
+                    var p = { employee_id: employeeId, year_month: month };
                     refreshSummary(p, 'am_chokyo_get_monthly_summary');
                     refreshDailyRows(p, 'am_chokyo_get_daily_rows');
                     refreshWeeklyRows(p, 'am_chokyo_get_weekly_rows');

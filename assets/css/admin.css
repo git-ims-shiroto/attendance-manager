@@ -532,6 +532,25 @@ tr[data-auto="false"] .am-kintai-select {
 /* ===============================================================
    週次サマリーテーブル
    ============================================================= */
+.am-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(150px, 1fr));
+    gap: 12px;
+}
+
+.am-summary-grid > div {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 14px;
+    border: 1px solid #d8e0e8;
+    border-radius: 6px;
+    background: #f8fafc;
+}
+
+.am-summary-grid strong { font-size: 22px; color: #2e6da4; }
+.am-summary-grid span { font-size: 12px; color: #666; }
+
 .am-weekly-wrap {
     margin-top: 28px;
     height: auto;
@@ -806,6 +825,8 @@ tr[data-auto="false"] .am-kintai-select {
    レスポンシブ
    ============================================================= */
 @media (max-width: 768px) {
+    .am-summary-grid { grid-template-columns: repeat(2, 1fr); }
+
     .am-form-row {
         flex-direction: column;
         gap: 14px;

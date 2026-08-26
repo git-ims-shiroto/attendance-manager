@@ -49,17 +49,44 @@ class AM_Compute_Jiba {
             foreach ( (array) $mat_rows as $mr ) { $mat_by_date[ $mr['work_date'] ] = $mr; }
         }
 
-        // kousoku_log（長距離フラグON日用）
-        $crew_code = AM_DB::get_crew_code_by_emp( $employee_code );
+        // kousoku_log（長距離フラグON日用）：社員の全コード履歴を期間付きで参照
+        $employee_id = AM_DB::get_employee_id_by_code( $employee_code );
+        $code_history = AM_DB::get_crew_codes_for_period( $employee_id, $start_date, $end_date );
+        $crew_codes = array_values( array_unique( array_filter( array_map(
+            function( $row ) { return trim( (string) ( $row['crew_code'] ?? '' ) ); },
+            $code_history
+        ) ) ) );
         $kousoku_by_date = [];
-        if ( $crew_code !== '' ) {
+        $source_alerts = [];
+        if ( ! empty( $crew_codes ) ) {
+            $placeholders = implode( ',', array_fill( 0, count( $crew_codes ), '%s' ) );
+            $params = array_merge( $crew_codes, [ $start_date, $end_date ] );
             $kousoku_rows = $wpdb->get_results( $wpdb->prepare(
                 "SELECT * FROM `{$wpdb->prefix}kousoku_log`
-                 WHERE crew_code COLLATE utf8mb4_unicode_520_ci = %s
-                   AND work_date BETWEEN %s AND %s ORDER BY work_date ASC",
-                $crew_code, $start_date, $end_date
+                 WHERE crew_code IN ({$placeholders})
+                   AND work_date BETWEEN %s AND %s ORDER BY work_date ASC, crew_code ASC",
+                ...$params
             ), ARRAY_A );
-            foreach ( (array) $kousoku_rows as $r ) { $kousoku_by_date[ $r['work_date'] ] = $r; }
+            foreach ( (array) $kousoku_rows as $r ) {
+                $applicable = false;
+                foreach ( $code_history as $history_row ) {
+                    if ( (string) $history_row['crew_code'] === (string) $r['crew_code']
+                        && AM_DB::crew_code_applies_on( $history_row, $r['work_date'] ) ) {
+                        $applicable = true;
+                        break;
+                    }
+                }
+                if ( ! $applicable ) continue;
+                if ( isset( $kousoku_by_date[ $r['work_date'] ] ) ) {
+                    $source_alerts[] = [
+                        'type' => 'error',
+                        'message' => sprintf( '%s に乗務員コード %s と %s の長距離データが重複しています。',
+                            $r['work_date'], $kousoku_by_date[ $r['work_date'] ]['crew_code'], $r['crew_code'] ),
+                    ];
+                    continue;
+                }
+                $kousoku_by_date[ $r['work_date'] ] = $r;
+            }
         }
 
         // tenrec_daily（長距離フラグON日用）
@@ -266,6 +293,9 @@ class AM_Compute_Jiba {
 
         // has_saved に関わらず常に自動計算を実行（is_manual フラグで手動行を保護）
         $rows = AM_Compute_Chokyo::apply_auto_kintai( $rows );
+        if ( ! empty( $rows ) && ! empty( $source_alerts ) ) {
+            $rows[0]['_alerts'] = array_merge( $source_alerts, $rows[0]['_alerts'] ?? [] );
+        }
 
         // ---- パス3：法定休出勤・所定休出勤フラグ判定 ----
         $houtei_kinmu_count = 0;

@@ -40,12 +40,12 @@ $page_url = admin_url( 'admin.php?page=attendance-manager' );
                 <div class="am-form-row">
                     <div class="am-form-group">
                         <label class="am-label" for="am-select-crew">社員名</label>
-                        <select id="am-select-crew" name="am_crew" class="am-select">
+                        <select id="am-select-crew" name="am_employee_id" class="am-select">
                             <option value="">― 社員を選択 ―</option>
                             <?php foreach ( $employees as $emp ) : ?>
-                            <option value="<?php echo esc_attr( $emp['crew_code'] ); ?>"
+                            <option value="<?php echo esc_attr( $emp['employee_id'] ); ?>"
                                 data-affil="<?php echo esc_attr( $emp['affiliation_id'] ); ?>"
-                                <?php selected( $selected_crew, $emp['crew_code'] ); ?>>
+                                <?php selected( $selected_employee_id, $emp['employee_id'] ); ?>>
                                 <?php if ( $emp['employee_code'] !== '―' ) : ?>[<?php echo esc_html( $emp['employee_code'] ); ?>]<?php endif; ?><?php echo esc_html( $emp['name'] ); ?>
                             </option>
                             <?php endforeach; ?>
@@ -56,7 +56,7 @@ $page_url = admin_url( 'admin.php?page=attendance-manager' );
                         <input type="month" id="am-select-month" name="am_month" class="am-input-month" value="<?php echo esc_attr( $selected_month ); ?>">
                     </div>
                     <div class="am-form-group am-form-group--btn">
-                        <button type="submit" id="am-btn-open" class="am-btn am-btn-primary" <?php echo ( $selected_crew === '' ) ? 'disabled' : ''; ?>>
+                        <button type="submit" id="am-btn-open" class="am-btn am-btn-primary" <?php echo ! $selected_employee_id ? 'disabled' : ''; ?>>
                             <span class="dashicons dashicons-chart-bar"></span> 集計表を開く
                         </button>
                     </div>
@@ -70,8 +70,8 @@ $page_url = admin_url( 'admin.php?page=attendance-manager' );
         <?php
         $prev_month = date( 'Y-m', strtotime( $selected_month . '-01 -1 month' ) );
         $next_month = date( 'Y-m', strtotime( $selected_month . '-01 +1 month' ) );
-        $prev_url   = esc_url( add_query_arg( [ 'page' => 'attendance-manager', 'am_crew' => $selected_crew, 'am_month' => $prev_month ], admin_url( 'admin.php' ) ) );
-        $next_url   = esc_url( add_query_arg( [ 'page' => 'attendance-manager', 'am_crew' => $selected_crew, 'am_month' => $next_month ], admin_url( 'admin.php' ) ) );
+        $prev_url   = esc_url( add_query_arg( [ 'page' => 'attendance-manager', 'am_employee_id' => $selected_employee_id, 'am_month' => $prev_month ], admin_url( 'admin.php' ) ) );
+        $next_url   = esc_url( add_query_arg( [ 'page' => 'attendance-manager', 'am_employee_id' => $selected_employee_id, 'am_month' => $next_month ], admin_url( 'admin.php' ) ) );
         ?>
         <div class="am-card-header" style="justify-content:space-between;">
             <span style="display:flex;align-items:center;gap:12px;">
@@ -81,7 +81,7 @@ $page_url = admin_url( 'admin.php?page=attendance-manager' );
                 <a href="<?php echo $next_url; ?>" class="am-btn am-btn-nav" title="翌月"><span class="dashicons dashicons-arrow-right-alt2"></span></a>
             </span>
             <button type="button" id="am-btn-save" class="am-btn am-btn-save"
-                data-crew="<?php echo esc_attr( $selected_crew ); ?>"
+                data-employee-id="<?php echo esc_attr( $selected_employee_id ); ?>"
                 data-month="<?php echo esc_attr( $selected_month ); ?>">
                 <span class="dashicons dashicons-saved"></span> 保存（更新）
             </button>
@@ -90,11 +90,12 @@ $page_url = admin_url( 'admin.php?page=attendance-manager' );
         <div class="am-card-body">
 
             <table class="am-info-table">
-                <thead><tr><th>社員名</th><th>社員No.</th><th>乗務員コード</th><th>所属</th></tr></thead>
+                <thead><tr><th>社員名</th><th>社員No.</th><th>現行乗務員コード</th><th>対象月の使用コード</th><th>所属</th></tr></thead>
                 <tbody><tr>
                     <td><?php echo esc_html( $emp_info['name'] ); ?></td>
                     <td><?php echo esc_html( $emp_info['employee_code'] ); ?></td>
                     <td><?php echo esc_html( $emp_info['crew_code'] ); ?></td>
+                    <td><?php echo esc_html( implode( '、', $used_crew_codes ) ); ?></td>
                     <td><?php echo esc_html( $emp_info['affiliation_name'] ); ?></td>
                 </tr></tbody>
             </table>

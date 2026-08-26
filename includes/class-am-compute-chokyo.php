@@ -29,7 +29,7 @@ class AM_Compute_Chokyo {
     /* ---------------------------------------------------------------
      * 月別日次データ生成
      * ------------------------------------------------------------- */
-    public static function get_monthly_rows( $crew_code, $year_month, $driver_name ) {
+    public static function get_monthly_rows( $employee_id, $year_month, $driver_name ) {
         global $wpdb;
 
         $start_date = $year_month . '-01';
@@ -37,16 +37,51 @@ class AM_Compute_Chokyo {
         $ymd_start  = str_replace( '-', '', $start_date );
         $ymd_end    = str_replace( '-', '', $end_date );
 
-        // kousoku_log
-        $kousoku_rows = $wpdb->get_results( $wpdb->prepare(
-            "SELECT * FROM `{$wpdb->prefix}kousoku_log`
-             WHERE crew_code COLLATE utf8mb4_unicode_520_ci = %s
-               AND work_date BETWEEN %s AND %s
-             ORDER BY work_date ASC",
-            $crew_code, $start_date, $end_date
-        ), ARRAY_A );
+        $code_history = AM_DB::get_crew_codes_for_period( $employee_id, $start_date, $end_date );
+        $crew_codes = array_values( array_unique( array_filter( array_map(
+            function( $row ) { return trim( (string) ( $row['crew_code'] ?? '' ) ); },
+            $code_history
+        ) ) ) );
+
+        // kousoku_log（対象社員の期間内コードをまとめて取得）
+        $kousoku_rows = [];
+        if ( ! empty( $crew_codes ) ) {
+            $placeholders = implode( ',', array_fill( 0, count( $crew_codes ), '%s' ) );
+            $params = array_merge( $crew_codes, [ $start_date, $end_date ] );
+            $kousoku_rows = $wpdb->get_results( $wpdb->prepare(
+                "SELECT * FROM `{$wpdb->prefix}kousoku_log`
+                 WHERE crew_code IN ({$placeholders})
+                   AND work_date BETWEEN %s AND %s
+                 ORDER BY work_date ASC, crew_code ASC",
+                ...$params
+            ), ARRAY_A );
+        }
         $kousoku_by_date = [];
-        foreach ( (array) $kousoku_rows as $r ) { $kousoku_by_date[ $r['work_date'] ] = $r; }
+        $source_alerts = [];
+        foreach ( (array) $kousoku_rows as $r ) {
+            $applicable = false;
+            foreach ( $code_history as $history_row ) {
+                if ( (string) $history_row['crew_code'] === (string) $r['crew_code']
+                    && AM_DB::crew_code_applies_on( $history_row, $r['work_date'] ) ) {
+                    $applicable = true;
+                    break;
+                }
+            }
+            if ( ! $applicable ) continue;
+            if ( isset( $kousoku_by_date[ $r['work_date'] ] ) ) {
+                $source_alerts[] = [
+                    'type' => 'error',
+                    'message' => sprintf(
+                        '%s に乗務員コード %s と %s の拘束時間データが重複しています。先に履歴期間または元データを確認してください。',
+                        $r['work_date'],
+                        $kousoku_by_date[ $r['work_date'] ]['crew_code'],
+                        $r['crew_code']
+                    ),
+                ];
+                continue;
+            }
+            $kousoku_by_date[ $r['work_date'] ] = $r;
+        }
 
         // tenrec_daily
         $tenrec_rows = $wpdb->get_results( $wpdb->prepare(
@@ -70,11 +105,8 @@ class AM_Compute_Chokyo {
         // MAT v3.2.0 以降は公開API（mat_get_daily_by_month）から丸め値・残業・深夜込みで取得する。
         // 未導入の環境では従来どおり直接 SELECT する。
         $mat_by_date = [];
-        $employee_code_for_mat = $wpdb->get_var( $wpdb->prepare(
-            "SELECT employee_code FROM `{$wpdb->prefix}emp_master`
-             WHERE crew_code COLLATE utf8mb4_unicode_520_ci = %s LIMIT 1",
-            $crew_code
-        ) );
+        $emp_info_for_mat = AM_DB::get_emp_info_by_id( $employee_id );
+        $employee_code_for_mat = $emp_info_for_mat['employee_code'] ?? '';
         if ( $employee_code_for_mat && $employee_code_for_mat !== '―' ) {
             if ( function_exists( 'mat_get_daily_by_month' ) ) {
                 $mat_by_date = (array) mat_get_daily_by_month( $employee_code_for_mat, $year_month );
@@ -89,10 +121,24 @@ class AM_Compute_Chokyo {
             }
         }
 
-        $affiliation_id = AM_DB::get_affiliation_id_by_crew( $crew_code );
+        $affiliation_id = (int) ( $emp_info_for_mat['affiliation_id'] ?? 0 );
         $shitei_rules   = ( AM_DB::get_active_rules_by_affiliation() )[ $affiliation_id ] ?? [];
-        $saved_kintai   = AM_DB::get_chokyo_saved_kintai( $crew_code, $year_month );
+        $saved_kintai   = AM_DB::get_chokyo_saved_kintai( $employee_id, $year_month, $crew_codes );
+        foreach ( $saved_kintai['_conflicts'] ?? [] as $conflict_date ) {
+            $source_alerts[] = [
+                'type' => 'error',
+                'message' => $conflict_date . ' の保存済み勤怠編集情報が複数コードに存在します。自動保存せず確認してください。',
+            ];
+        }
+        unset( $saved_kintai['_conflicts'] );
         $paidleave_dates = AM_DB::get_paidleave_consumed_dates( $employee_code_for_mat, $year_month );
+        $carryover_check = AM_DB::get_chokyo_carryover( $employee_id, $year_month, $crew_codes );
+        if ( ! empty( $carryover_check['_conflict'] ) ) {
+            $source_alerts[] = [
+                'type' => 'error',
+                'message' => 'この月の前月繰越データが複数の乗組員コードに存在するため、自動適用していません。',
+            ];
+        }
 
         $dow_ja = [ 'Sun'=>'日','Mon'=>'月','Tue'=>'火','Wed'=>'水','Thu'=>'木','Fri'=>'金','Sat'=>'土' ];
         $rows   = [];
@@ -176,6 +222,7 @@ class AM_Compute_Chokyo {
                 'drive_min' => $drive_min, 'cargo_min' => $cargo_min,
                 'break_calc_min' => $break_calc_min, 'overtime_min' => $overtime_min,
                 'midnight_min' => $midnight_min,
+                'source_crew_code' => $k['crew_code'] ?? '',
             ];
             $cursor->modify('+1 day');
         }
@@ -281,6 +328,9 @@ class AM_Compute_Chokyo {
 
         // has_saved に関わらず常に自動計算を実行（is_manual フラグで手動行を保護）
         $rows = self::apply_auto_kintai( $rows );
+        if ( ! empty( $rows ) && ! empty( $source_alerts ) ) {
+            $rows[0]['_alerts'] = array_merge( $source_alerts, $rows[0]['_alerts'] ?? [] );
+        }
 
         // ---- パス3：休日出勤フラグ判定 ----
         // 法定休出勤・所定休出勤をそれぞれ独立したフラグで管理
@@ -476,11 +526,14 @@ class AM_Compute_Chokyo {
         return $rows;
     }
 
-    public static function get_weekly_summary( $crew_code, $year_month, $monthly_rows ) {
+    public static function get_weekly_summary( $employee_id, $year_month, $monthly_rows ) {
         $month_start_str = $year_month . '-01';
         $month_end_str   = date( 'Y-m-t', strtotime( $month_start_str ) );
-        $carryover       = AM_DB::get_chokyo_carryover( $crew_code, $year_month );
-        return self::_build_weekly_static( $crew_code, $year_month, $monthly_rows, $month_start_str, $month_end_str, $carryover, 'chokyo' );
+        $history = AM_DB::get_crew_codes_for_period( $employee_id, $month_start_str, $month_end_str );
+        $codes = array_values( array_filter( array_map( function( $row ) { return $row['crew_code'] ?? ''; }, $history ) ) );
+        $carryover = AM_DB::get_chokyo_carryover( $employee_id, $year_month, $codes );
+        if ( ! empty( $carryover['_conflict'] ) ) $carryover = null;
+        return self::_build_weekly_static( $employee_id, $year_month, $monthly_rows, $month_start_str, $month_end_str, $carryover, 'chokyo' );
     }
 
     public static function _build_weekly_static( $key, $year_month, $monthly_rows, $month_start_str, $month_end_str, $carryover, $type ) {
@@ -666,7 +719,7 @@ class AM_Compute_Chokyo {
         return [ 'weeks' => $weeks, 'total' => $total ];
     }
 
-    public static function get_monthly_summary( $monthly_rows, $weekly, $crew_code, $year_month ) {
+    public static function get_monthly_summary( $monthly_rows, $weekly, $employee_id, $year_month ) {
         $attendance = $absent = $holiday_work = $hayatai_min = 0;
         $unmatched_houtei_days = $unmatched_houtei_labor_min = 0;
         foreach ( $monthly_rows as $r ) {
@@ -680,7 +733,7 @@ class AM_Compute_Chokyo {
             }
             $hayatai_min += (int) ( $r['hayatai_min'] ?? 0 );
         }
-        $paidleave = AM_DB::get_paidleave_summary_by_crew( $crew_code, $year_month );
+        $paidleave = AM_DB::get_paidleave_summary_by_employee_id( $employee_id, $year_month );
         return [
             'attendance'     => $attendance, 'absent' => $absent, 'holiday_work' => $holiday_work,
             'unmatched_houtei_days' => $unmatched_houtei_days,

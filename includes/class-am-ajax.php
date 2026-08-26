@@ -15,15 +15,28 @@ class AM_Ajax {
         if ( ! current_user_can( 'edit_custom_plugins' ) ) wp_die( -1 );
 
         global $wpdb;
-        $table     = $wpdb->prefix . 'am_chokyo_kintai_log';
-        $crew_code = sanitize_text_field( wp_unslash( $_POST['crew_code'] ?? '' ) );
+        $table       = $wpdb->prefix . 'am_chokyo_kintai_log';
+        $employee_id = absint( $_POST['employee_id'] ?? 0 );
         $rows_raw  = wp_unslash( $_POST['rows'] ?? [] );
 
-        if ( ! $crew_code || ! is_array( $rows_raw ) ) {
+        $emp_info = AM_DB::get_emp_info_by_id( $employee_id );
+        $crew_code = trim( (string) ( $emp_info['crew_code'] ?? '' ) );
+        if ( ! $employee_id || ! $emp_info || $crew_code === '' || ! is_array( $rows_raw ) ) {
             wp_send_json_error( [ 'message' => 'パラメータが不正です' ] );
         }
 
+        $dates = array_values( array_filter( array_map( function( $row ) {
+            return sanitize_text_field( $row['date'] ?? '' );
+        }, $rows_raw ) ) );
+        $period_start = empty( $dates ) ? date( 'Y-m-01' ) : min( $dates );
+        $period_end   = empty( $dates ) ? date( 'Y-m-t' ) : max( $dates );
+        $history = AM_DB::get_crew_codes_for_period( $employee_id, $period_start, $period_end );
+        $codes = array_values( array_unique( array_filter( array_map( function( $row ) {
+            return $row['crew_code'] ?? '';
+        }, $history ) ) ) );
+
         $saved = 0;
+        $wpdb->query( 'START TRANSACTION' );
         foreach ( $rows_raw as $row ) {
             $work_date     = sanitize_text_field( $row['date']          ?? '' );
             $kintai_type   = sanitize_text_field( $row['kintai_type']   ?? '' );
@@ -33,19 +46,40 @@ class AM_Ajax {
             $hayatai_min   = (int) ( $row['hayatai_min'] ?? 0 );
             $note          = sanitize_text_field( $row['note'] ?? '' );
             if ( ! $work_date ) continue;
-
-            $wpdb->query( $wpdb->prepare(
-                "INSERT INTO `{$table}`
-                    (`crew_code`,`work_date`,`kintai_type`,`furikae_label`,`is_manual`,`jiba`,`hayatai_min`,`note`)
-                 VALUES (%s,%s,%s,%s,%d,%d,%d,%s)
-                 ON DUPLICATE KEY UPDATE
-                    `kintai_type`=VALUES(`kintai_type`), `furikae_label`=VALUES(`furikae_label`),
-                    `is_manual`=VALUES(`is_manual`), `jiba`=VALUES(`jiba`),
-                    `hayatai_min`=VALUES(`hayatai_min`), `note`=VALUES(`note`), `updated_at`=NOW()",
-                $crew_code, $work_date, $kintai_type, $furikae_label, $is_manual, $jiba, $hayatai_min, $note
+            $where = 'employee_id = %d';
+            $params = [ $employee_id ];
+            if ( ! empty( $codes ) ) {
+                $placeholders = implode( ',', array_fill( 0, count( $codes ), '%s' ) );
+                $where .= " OR (employee_id IS NULL AND crew_code IN ({$placeholders}))";
+                $params = array_merge( $params, $codes );
+            }
+            $params[] = $work_date;
+            $matches = $wpdb->get_col( $wpdb->prepare(
+                "SELECT id FROM `{$table}` WHERE ({$where}) AND work_date = %s ORDER BY id ASC",
+                ...$params
             ) );
+            if ( count( $matches ) > 1 ) {
+                $wpdb->query( 'ROLLBACK' );
+                wp_send_json_error( [ 'message' => $work_date . ' の保存済み勤怠が複数コードに存在するため、自動更新できません' ] );
+            }
+
+            $save_data = [
+                'employee_id' => $employee_id, 'crew_code' => $crew_code,
+                'work_date' => $work_date, 'kintai_type' => $kintai_type,
+                'furikae_label' => $furikae_label, 'is_manual' => $is_manual,
+                'jiba' => $jiba, 'hayatai_min' => $hayatai_min, 'note' => $note,
+                'updated_at' => current_time( 'mysql' ),
+            ];
+            $result = ! empty( $matches )
+                ? $wpdb->update( $table, $save_data, [ 'id' => (int) $matches[0] ] )
+                : $wpdb->insert( $table, $save_data );
+            if ( $result === false ) {
+                $wpdb->query( 'ROLLBACK' );
+                wp_send_json_error( [ 'message' => '保存に失敗しました：' . $wpdb->last_error ] );
+            }
             $saved++;
         }
+        $wpdb->query( 'COMMIT' );
         wp_send_json_success( [ 'saved' => $saved ] );
     }
 
@@ -53,14 +87,15 @@ class AM_Ajax {
         check_ajax_referer( 'am_nonce', 'nonce' );
         if ( ! current_user_can( 'access_custom_plugins' ) ) wp_die( -1 );
 
-        $crew_code  = sanitize_text_field( wp_unslash( $_POST['crew_code']  ?? '' ) );
+        $employee_id = absint( $_POST['employee_id'] ?? 0 );
         $year_month = sanitize_text_field( wp_unslash( $_POST['year_month'] ?? '' ) );
-        if ( ! $crew_code || ! $year_month ) wp_send_json_error( [ 'message' => 'パラメータが不正です' ] );
+        if ( ! $employee_id || ! $year_month ) wp_send_json_error( [ 'message' => 'パラメータが不正です' ] );
 
-        $emp_info     = AM_DB::get_emp_info_by_crew( $crew_code );
-        $monthly_rows = AM_Compute_Chokyo::get_monthly_rows( $crew_code, $year_month, $emp_info['name'] );
-        $weekly       = AM_Compute_Chokyo::get_weekly_summary( $crew_code, $year_month, $monthly_rows );
-        $summary      = AM_Compute_Chokyo::get_monthly_summary( $monthly_rows, $weekly, $crew_code, $year_month );
+        $emp_info     = AM_DB::get_emp_info_by_id( $employee_id );
+        if ( ! $emp_info ) wp_send_json_error( [ 'message' => '社員が見つかりません' ] );
+        $monthly_rows = AM_Compute_Chokyo::get_monthly_rows( $employee_id, $year_month, $emp_info['name'] );
+        $weekly       = AM_Compute_Chokyo::get_weekly_summary( $employee_id, $year_month, $monthly_rows );
+        $summary      = AM_Compute_Chokyo::get_monthly_summary( $monthly_rows, $weekly, $employee_id, $year_month );
 
         $summary['labor_str']    = AM_Compute_Chokyo::format_min( $summary['labor_min'] );
         $summary['hayatai_str']  = $summary['hayatai_min'] > 0 ? AM_Compute_Chokyo::format_min( $summary['hayatai_min'] ) : '';
@@ -73,12 +108,13 @@ class AM_Ajax {
         check_ajax_referer( 'am_nonce', 'nonce' );
         if ( ! current_user_can( 'access_custom_plugins' ) ) wp_die( -1 );
 
-        $crew_code  = sanitize_text_field( wp_unslash( $_POST['crew_code']  ?? '' ) );
+        $employee_id = absint( $_POST['employee_id'] ?? 0 );
         $year_month = sanitize_text_field( wp_unslash( $_POST['year_month'] ?? '' ) );
-        if ( ! $crew_code || ! $year_month ) wp_send_json_error( [ 'message' => 'パラメータが不正です' ] );
+        if ( ! $employee_id || ! $year_month ) wp_send_json_error( [ 'message' => 'パラメータが不正です' ] );
 
-        $emp_info     = AM_DB::get_emp_info_by_crew( $crew_code );
-        $monthly_rows = AM_Compute_Chokyo::get_monthly_rows( $crew_code, $year_month, $emp_info['name'] );
+        $emp_info     = AM_DB::get_emp_info_by_id( $employee_id );
+        if ( ! $emp_info ) wp_send_json_error( [ 'message' => '社員が見つかりません' ] );
+        $monthly_rows = AM_Compute_Chokyo::get_monthly_rows( $employee_id, $year_month, $emp_info['name'] );
         $alerts = $monthly_rows[0]['_alerts'] ?? [];
         $rows = [];
         foreach ( $monthly_rows as $r ) {
@@ -96,6 +132,7 @@ class AM_Ajax {
                 'break_min'    => AM_Compute_Chokyo::format_min( $r['break_calc_min'] ),
                 'midnight_min' => AM_Compute_Chokyo::format_min( $r['midnight_min'] ),
                 'overtime_min' => AM_Compute_Chokyo::format_min( $r['overtime_min'] ),
+                'source_crew_code' => $r['source_crew_code'] ?? '',
             ];
         }
         wp_send_json_success( [ 'rows' => $rows, 'alerts' => $alerts ] );
@@ -105,13 +142,14 @@ class AM_Ajax {
         check_ajax_referer( 'am_nonce', 'nonce' );
         if ( ! current_user_can( 'access_custom_plugins' ) ) wp_die( -1 );
 
-        $crew_code  = sanitize_text_field( wp_unslash( $_POST['crew_code']  ?? '' ) );
+        $employee_id = absint( $_POST['employee_id'] ?? 0 );
         $year_month = sanitize_text_field( wp_unslash( $_POST['year_month'] ?? '' ) );
-        if ( ! $crew_code || ! $year_month ) wp_send_json_error( [ 'message' => 'パラメータが不正です' ] );
+        if ( ! $employee_id || ! $year_month ) wp_send_json_error( [ 'message' => 'パラメータが不正です' ] );
 
-        $emp_info     = AM_DB::get_emp_info_by_crew( $crew_code );
-        $monthly_rows = AM_Compute_Chokyo::get_monthly_rows( $crew_code, $year_month, $emp_info['name'] );
-        $weekly       = AM_Compute_Chokyo::get_weekly_summary( $crew_code, $year_month, $monthly_rows );
+        $emp_info     = AM_DB::get_emp_info_by_id( $employee_id );
+        if ( ! $emp_info ) wp_send_json_error( [ 'message' => '社員が見つかりません' ] );
+        $monthly_rows = AM_Compute_Chokyo::get_monthly_rows( $employee_id, $year_month, $emp_info['name'] );
+        $weekly       = AM_Compute_Chokyo::get_weekly_summary( $employee_id, $year_month, $monthly_rows );
         wp_send_json_success( self::_format_weekly_result( $weekly ) );
     }
 
@@ -325,14 +363,14 @@ class AM_Ajax {
         // 長距離
         $chokyo_emps = AM_DB::get_employees_by_category( 'chokyo' );
         foreach ( $chokyo_emps['employees'] as $emp ) {
-            $crew_code = $emp['crew_code'] ?? '';
-            if ( $crew_code === '' ) continue;
+            $employee_id = (int) ( $emp['employee_id'] ?? 0 );
+            if ( ! $employee_id ) continue;
 
-            $emp_info     = AM_DB::get_emp_info_by_crew( $crew_code );
-            $monthly_rows = AM_Compute_Chokyo::get_monthly_rows( $crew_code, $year_month, $emp_info['name'] );
-            $weekly       = AM_Compute_Chokyo::get_weekly_summary( $crew_code, $year_month, $monthly_rows );
+            $emp_info     = AM_DB::get_emp_info_by_id( $employee_id );
+            $monthly_rows = AM_Compute_Chokyo::get_monthly_rows( $employee_id, $year_month, $emp_info['name'] );
+            $weekly       = AM_Compute_Chokyo::get_weekly_summary( $employee_id, $year_month, $monthly_rows );
             $summary      = ! empty( $monthly_rows )
-                ? AM_Compute_Chokyo::get_monthly_summary( $monthly_rows, $weekly, $crew_code, $year_month )
+                ? AM_Compute_Chokyo::get_monthly_summary( $monthly_rows, $weekly, $employee_id, $year_month )
                 : null;
 
             $rows[] = self::_format_summary_row( $emp['employee_code'], $emp['name'], 'chokyo', $summary );
