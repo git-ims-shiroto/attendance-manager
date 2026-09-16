@@ -28,7 +28,7 @@ class AM_Summary_CSV_Exporter {
         $output = fopen( 'php://output', 'w' );
         fwrite( $output, "\xEF\xBB\xBF" ); // Excelで日本語を開けるようUTF-8 BOMを付与。
         fputcsv( $output, [
-            '氏名', '職種', '総労働時間', '確定残業時間', '確定残業が60時間を超えた分の数値',
+            '氏名', '職種', '総労働時間（点呼時間含む）', '確定残業時間', '確定残業が60時間を超えた分の数値',
             '深夜時間', '出勤日数', '法定休日出勤日数', '有給消化日数', '法定休日労働時間', '積卸時間',
             '所定休日勤務実績_1', '所定休日勤務実績_1の労働時間',
             '所定休日勤務実績_2', '所定休日勤務実績_2の労働時間',
@@ -66,14 +66,21 @@ class AM_Summary_CSV_Exporter {
 
             $total        = $weekly['total'] ?? [];
             $overtime_min = (int) ( $summary['overtime_min'] ?? 0 );
+            $job_type     = $employee['job_type_name'] ?? '';
+            $attendance   = (int) ( $summary['attendance'] ?? 0 );
+            $labor_min    = (int) ( $summary['labor_min'] ?? 0 );
+            // 長距離・郵便は、CSVの総労働時間に出勤1日あたり10分の点呼時間を加算する。
+            if ( in_array( $job_type, [ '長距離', '郵便' ], true ) ) {
+                $labor_min += 10 * $attendance;
+            }
             $record = [
                 $employee['name'],
-                $employee['job_type_name'] ?? '',
-                self::format_minutes( $summary['labor_min'] ?? 0 ),
+                $job_type,
+                self::format_minutes( $labor_min ),
                 self::format_minutes( $overtime_min ),
                 self::format_minutes( max( 0, $overtime_min - 3600 ) ),
                 self::format_minutes( $total['midnight_min'] ?? 0 ),
-                (int) ( $summary['attendance'] ?? 0 ),
+                $attendance,
                 (int) ( $summary['unmatched_houtei_days'] ?? 0 ),
                 ! empty( $summary['paid_has_data'] ) ? (float) $summary['paid_consumed'] : '',
                 self::format_minutes( $summary['unmatched_houtei_labor_min'] ?? 0 ),
@@ -88,7 +95,7 @@ class AM_Summary_CSV_Exporter {
 
     private static function format_minutes( $minutes ) {
         $minutes = max( 0, (int) $minutes );
-        // 分を時間単位の10進数に変換し、小数第2位に四捨五入する。
-        return number_format( $minutes / 60, 2, '.', '' );
+        // 分を時間単位の10進数に変換し、小数第2位を四捨五入して小数第1位まで出力する。
+        return number_format( $minutes / 60, 1, '.', '' );
     }
 }
