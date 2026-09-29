@@ -251,7 +251,7 @@
             var $tr = $(this).closest('tr');
             var $hosei = $tr.find('.am-hosei-input');
             var hasTime = $.trim($tr.find('td:nth-child(3)').text()) !== '' && $.trim($tr.find('td:nth-child(4)').text()) !== '';
-            if ($(this).is(':checked') && hasTime) {
+            if ($(this).is(':checked') && hasTime && !$hosei.data('before-start')) {
                 $hosei.prop('disabled', false).val(10);
             } else {
                 $hosei.prop('disabled', true).val(0);
