@@ -181,16 +181,18 @@ class AM_Ajax {
             $is_manual     = (int) ( $row['is_manual']   ?? 0 );
             $chokyo        = (int) ( $row['chokyo']      ?? 0 );
             $hayatai_min   = (int) ( $row['hayatai_min'] ?? 0 );
+            // 補正時間は長距離フラグONの行のみ保存。OFFはNULL（後でONになったら既定10分）
+            $hosei_sql     = $chokyo ? $wpdb->prepare( '%d', max( 0, (int) ( $row['hosei_min'] ?? 10 ) ) ) : 'NULL';
             $note          = sanitize_text_field( $row['note'] ?? '' );
             if ( ! $work_date ) continue;
 
             $wpdb->query( $wpdb->prepare(
                 "INSERT INTO `{$table}`
-                    (`employee_code`,`work_date`,`kintai_type`,`furikae_label`,`is_manual`,`chokyo`,`hayatai_min`,`note`)
-                 VALUES (%s,%s,%s,%s,%d,%d,%d,%s)
+                    (`employee_code`,`work_date`,`kintai_type`,`furikae_label`,`is_manual`,`chokyo`,`hosei_min`,`hayatai_min`,`note`)
+                 VALUES (%s,%s,%s,%s,%d,%d,{$hosei_sql},%d,%s)
                  ON DUPLICATE KEY UPDATE
                     `kintai_type`=VALUES(`kintai_type`), `furikae_label`=VALUES(`furikae_label`),
-                    `is_manual`=VALUES(`is_manual`), `chokyo`=VALUES(`chokyo`),
+                    `is_manual`=VALUES(`is_manual`), `chokyo`=VALUES(`chokyo`), `hosei_min`=VALUES(`hosei_min`),
                     `hayatai_min`=VALUES(`hayatai_min`), `note`=VALUES(`note`), `updated_at`=NOW()",
                 $employee_code, $work_date, $kintai_type, $furikae_label, $is_manual, $chokyo, $hayatai_min, $note
             ) );
@@ -242,9 +244,12 @@ class AM_Ajax {
                 'break_min'    => AM_Compute_Chokyo::format_min( $r['break_calc_min'] ),
                 'midnight_min' => AM_Compute_Chokyo::format_min( $r['midnight_min'] ),
                 'overtime_min' => AM_Compute_Chokyo::format_min( $r['overtime_min'] ),
+                'hosei_min'    => (int) ( $r['hosei_min'] ?? 0 ),
+                'has_time'     => ! empty( $r['has_time'] ),
             ];
         }
-        wp_send_json_success( $rows );
+        // JS(refreshDailyRows)は { rows, alerts } 形式を期待する
+        wp_send_json_success( [ 'rows' => $rows, 'alerts' => $monthly_rows[0]['_alerts'] ?? [] ] );
     }
 
     public static function jiba_get_weekly_rows() {

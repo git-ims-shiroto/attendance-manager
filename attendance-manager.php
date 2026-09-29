@@ -143,6 +143,7 @@ class Tanpopo_AttendanceManager {
             `furikae_label`  VARCHAR(30)  NOT NULL DEFAULT '',
             `is_manual`      TINYINT(1)   NOT NULL DEFAULT 0,
             `chokyo`         TINYINT(1)   NOT NULL DEFAULT 0 COMMENT '長距離フラグ',
+            `hosei_min`      INT          NULL DEFAULT NULL COMMENT '補正時間(点呼など)分 NULL=既定',
             `hayatai_min`    INT          NOT NULL DEFAULT 0,
             `note`           VARCHAR(100) NOT NULL DEFAULT '',
             `updated_at`     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -212,6 +213,13 @@ class Tanpopo_AttendanceManager {
         if ( $wpdb->get_var( "SHOW TABLES LIKE '{$chokyo_log}'" )
             && ! $wpdb->get_var( "SHOW COLUMNS FROM `{$chokyo_log}` LIKE 'hosei_min'" ) ) {
             $wpdb->query( "ALTER TABLE `{$chokyo_log}` ADD `hosei_min` INT NOT NULL DEFAULT 10 COMMENT '補正時間(点呼など)分' AFTER `jiba`" );
+        }
+
+        // 地場・事務：補正時間（NULL=既定。長距離フラグON時は10分）
+        $jiba_log = $wpdb->prefix . 'am_jiba_kintai_log';
+        if ( $wpdb->get_var( "SHOW TABLES LIKE '{$jiba_log}'" )
+            && ! $wpdb->get_var( "SHOW COLUMNS FROM `{$jiba_log}` LIKE 'hosei_min'" ) ) {
+            $wpdb->query( "ALTER TABLE `{$jiba_log}` ADD `hosei_min` INT NULL DEFAULT NULL COMMENT '補正時間(点呼など)分 NULL=既定' AFTER `chokyo`" );
         }
 
         $this->migrate_chokyo_employee_ids();

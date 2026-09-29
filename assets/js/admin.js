@@ -247,6 +247,15 @@
         var chokyoToggled = false;
         $(document).on('change', '.am-chokyo-input', function () {
             chokyoToggled = true;
+            // 補正時間：長距離ONの日のみ入力可（初期値10分）、OFFは0
+            var $tr = $(this).closest('tr');
+            var $hosei = $tr.find('.am-hosei-input');
+            var hasTime = $.trim($tr.find('td:nth-child(3)').text()) !== '' && $.trim($tr.find('td:nth-child(4)').text()) !== '';
+            if ($(this).is(':checked') && hasTime) {
+                $hosei.prop('disabled', false).val(10);
+            } else {
+                $hosei.prop('disabled', true).val(0);
+            }
         });
 
         $(document).on('click', '#am-btn-save-jiba', function () {
@@ -263,6 +272,7 @@
                     furikae_label: $tr.data('furikae') || '',
                     is_manual: $tr.attr('data-auto') === 'false' ? 1 : 0,
                     chokyo: $tr.find('.am-chokyo-input').is(':checked') ? 1 : 0,
+                    hosei_min: $tr.find('.am-hosei-input').is(':disabled') ? 10 : Math.max(0, parseInt($tr.find('.am-hosei-input').val(), 10) || 0),
                     hayatai_min: parseMin($tr.find('.am-hayatai-input').val()),
                     note: $tr.find('.am-note-input').val() || '',
                 });
