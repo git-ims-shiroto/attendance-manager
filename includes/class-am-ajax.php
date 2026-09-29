@@ -186,7 +186,7 @@ class AM_Ajax {
             $note          = sanitize_text_field( $row['note'] ?? '' );
             if ( ! $work_date ) continue;
 
-            $wpdb->query( $wpdb->prepare(
+            $upsert = $wpdb->query( $wpdb->prepare(
                 "INSERT INTO `{$table}`
                     (`employee_code`,`work_date`,`kintai_type`,`furikae_label`,`is_manual`,`chokyo`,`hosei_min`,`hayatai_min`,`note`)
                  VALUES (%s,%s,%s,%s,%d,%d,{$hosei_sql},%d,%s)
@@ -196,6 +196,9 @@ class AM_Ajax {
                     `hayatai_min`=VALUES(`hayatai_min`), `note`=VALUES(`note`), `updated_at`=NOW()",
                 $employee_code, $work_date, $kintai_type, $furikae_label, $is_manual, $chokyo, $hayatai_min, $note
             ) );
+            if ( $upsert === false ) {
+                wp_send_json_error( [ 'message' => '保存に失敗しました：' . $wpdb->last_error ] );
+            }
             $saved++;
         }
         wp_send_json_success( [ 'saved' => $saved ] );
@@ -235,6 +238,8 @@ class AM_Ajax {
         foreach ( $monthly_rows as $r ) {
             $rows[] = [
                 'date'         => $r['date'],
+                'houtei_kinmu' => ! empty( $r['houtei_kinmu'] ),
+                'shitei_kinmu' => ! empty( $r['shitei_kinmu'] ),
                 'start_time'   => $r['start_time']      ?? '',
                 'end_time'     => $r['end_time']         ?? '',
                 'kousoku_min'  => AM_Compute_Chokyo::format_min( $r['kousoku_min'] ),
