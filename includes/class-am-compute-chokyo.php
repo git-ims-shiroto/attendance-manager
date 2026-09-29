@@ -300,7 +300,7 @@ class AM_Compute_Chokyo {
         }
         unset( $r );
 
-        // 補正時間（点呼など）：始業・終業時刻のない日は0。週集計の労働時間にのみ加算する。
+        // 補正時間（点呼など）：始業・終業時刻のない日は0。週集計の労働時間・日残業・週残業判定に加算する（日次の労働時間欄は元のまま）。
         $hosei_start = AM_DB::get_hosei_start_month();
         foreach ( $rows as &$r ) {
             $r['has_time'] = ( $r['start_time'] ?? '' ) !== '' && ( $r['end_time'] ?? '' ) !== '';
@@ -308,6 +308,13 @@ class AM_Compute_Chokyo {
             if ( ! $r['has_time'] || $year_month < $hosei_start ) {
                 $r['hosei_min'] = 0;
                 if ( $year_month < $hosei_start ) $r['has_time'] = false;
+            }
+            // 日残業：（労働時間＋補正時間）－480分。補正時間によって増える超過分を元の日残業へ加算する。
+            // （元の値に含まれる時間外深夜などの算入は維持する）
+            if ( $r['hosei_min'] > 0 && $r['labor_min'] !== null ) {
+                $labor = (int) $r['labor_min'];
+                $delta = max( 0, $labor + $r['hosei_min'] - 480 ) - max( 0, $labor - 480 );
+                if ( $delta > 0 ) $r['overtime_min'] = (int) ( $r['overtime_min'] ?? 0 ) + $delta;
             }
         }
         unset( $r );
@@ -648,7 +655,7 @@ class AM_Compute_Chokyo {
                         $sum['midnight_min'] += (int)( $r['midnight_min'] ?? 0 );
                         // 振替なしの法定休出勤は実績時間には含めるが、残業判定には含めない。
                         if ( empty( $r['unmatched_houtei_kinmu'] ) ) {
-                            $sum['overtime_labor_min'] += (int)( $r['labor_min'] ?? 0 );
+                            $sum['overtime_labor_min'] += (int)( $r['labor_min'] ?? 0 ) + ( $type === 'chokyo' ? (int)( $r['hosei_min'] ?? 0 ) : 0 );
                             $sum['overtime_min']       += (int)( $r['overtime_min'] ?? 0 );
                         }
                     }
