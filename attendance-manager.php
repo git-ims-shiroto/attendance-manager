@@ -334,8 +334,8 @@ class Tanpopo_AttendanceManager {
         $pages = [ 'attendance-manager', 'attendance-manager-jiba', 'attendance-manager-summary', 'attendance-manager-kousoku-import', 'attendance-manager-settings' ];
         if ( ! in_array( $page, $pages, true ) ) return;
 
-        wp_enqueue_style(  'am-admin', AM_PLUGIN_URL . 'assets/css/admin.css', [], AM_VERSION );
-        wp_enqueue_script( 'am-admin', AM_PLUGIN_URL . 'assets/js/admin.js', [ 'jquery' ], AM_VERSION, true );
+        wp_enqueue_style(  'am-admin', AM_PLUGIN_URL . 'assets/css/admin.css', [], AM_VERSION . '.' . filemtime( AM_PLUGIN_DIR . 'assets/css/admin.css' ) );
+        wp_enqueue_script( 'am-admin', AM_PLUGIN_URL . 'assets/js/admin.js', [ 'jquery' ], AM_VERSION . '.' . filemtime( AM_PLUGIN_DIR . 'assets/js/admin.js' ), true );
         wp_localize_script( 'am-admin', 'amData', [
             'defaultMonth' => date( 'Y-m' ),
             'ajaxUrl'      => admin_url( 'admin-ajax.php' ),
