@@ -648,6 +648,7 @@ class AM_Compute_Chokyo {
                         $sum['labor_min']    += (int)( $r['labor_min']    ?? 0 );
                         if ( $type === 'chokyo' ) {
                             $sum['labor_min'] += (int)( $r['hosei_min'] ?? 0 );
+                            $sum['kousoku_min'] += (int)( $r['hosei_min'] ?? 0 );
                             $sum['hosei_min'] += (int)( $r['hosei_min'] ?? 0 );
                         }
                         $sum['drive_min']    += (int)( $r['drive_min']    ?? 0 );
@@ -712,7 +713,7 @@ class AM_Compute_Chokyo {
                 'labor_min'          => $net_labor,
                 'drive_min'          => $net_drive,
                 'cargo_min'          => $net_cargo,
-                'break_min'          => $net_kousoku - ( $net_labor - $sum['hosei_min'] ),
+                'break_min'          => $net_kousoku - $net_labor,
                 'midnight_min'       => $net_midnight,
                 'day_overtime_min'   => $sum['overtime_min'],
                 // 月間合計では月末時点の値を使う。画面の週行は従来どおり繰越バッジを表示する。
