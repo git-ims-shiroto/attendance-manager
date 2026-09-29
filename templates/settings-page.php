@@ -126,4 +126,42 @@
         <div id="jt-message" style="padding:8px 20px;font-size:13px;font-weight:700;display:none;"></div>
     </div>
 
+    <div class="am-settings-section-heading" style="margin-top:32px;">
+        <span class="dashicons dashicons-admin-links"></span>
+        未紐付け乗組員コード
+    </div>
+    <p class="am-settings-section-desc">拘束時間データに存在し、社員マスタまたは乗組員コード履歴へ紐付いていないコードです。社員情報管理の社員編集画面から「過去コードを追加」してください。</p>
+    <div class="am-card">
+        <div class="am-card-header"><span class="dashicons dashicons-database"></span> 移行状況</div>
+        <div class="am-card-body">
+            <div class="am-summary-grid">
+                <div><strong><?php echo number_format_i18n( $crew_migration_status['unmigrated_logs'] ); ?></strong><span>未移行 勤怠編集行</span></div>
+                <div><strong><?php echo number_format_i18n( $crew_migration_status['unmigrated_carryovers'] ); ?></strong><span>未移行 繰越行</span></div>
+                <div><strong><?php echo number_format_i18n( $crew_migration_status['log_conflicts'] ); ?></strong><span>勤怠編集の衝突</span></div>
+                <div><strong><?php echo number_format_i18n( $crew_migration_status['carryover_conflicts'] ); ?></strong><span>繰越の衝突</span></div>
+            </div>
+        </div>
+    </div>
+    <div class="am-card">
+        <div class="am-card-body" style="padding:0;">
+            <div class="am-table-wrap" style="border:none;border-radius:0;height:auto;">
+                <table class="am-main-table">
+                    <thead><tr><th>乗組員コード</th><th>最古日</th><th>最新日</th><th>データ件数</th></tr></thead>
+                    <tbody>
+                    <?php if ( empty( $unlinked_crew_codes ) ) : ?>
+                        <tr><td colspan="4" style="text-align:center;color:#777;padding:24px;">未紐付けコードはありません</td></tr>
+                    <?php else : foreach ( $unlinked_crew_codes as $code ) : ?>
+                        <tr>
+                            <td><strong><?php echo esc_html( $code['crew_code'] ); ?></strong></td>
+                            <td><?php echo esc_html( $code['first_date'] ); ?></td>
+                            <td><?php echo esc_html( $code['last_date'] ); ?></td>
+                            <td><?php echo number_format_i18n( (int) $code['row_count'] ); ?></td>
+                        </tr>
+                    <?php endforeach; endif; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
 </div><!-- /.am-wrap -->
