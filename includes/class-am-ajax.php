@@ -44,6 +44,7 @@ class AM_Ajax {
             $is_manual     = (int) ( $row['is_manual']   ?? 0 );
             $jiba          = (int) ( $row['jiba']        ?? 0 );
             $hayatai_min   = (int) ( $row['hayatai_min'] ?? 0 );
+            $hosei_min     = max( 0, (int) ( $row['hosei_min'] ?? 10 ) );
             $note          = sanitize_text_field( $row['note'] ?? '' );
             if ( ! $work_date ) continue;
             $where = 'employee_id = %d';
@@ -67,7 +68,7 @@ class AM_Ajax {
                 'employee_id' => $employee_id, 'crew_code' => $crew_code,
                 'work_date' => $work_date, 'kintai_type' => $kintai_type,
                 'furikae_label' => $furikae_label, 'is_manual' => $is_manual,
-                'jiba' => $jiba, 'hayatai_min' => $hayatai_min, 'note' => $note,
+                'jiba' => $jiba, 'hosei_min' => $hosei_min, 'hayatai_min' => $hayatai_min, 'note' => $note,
                 'updated_at' => current_time( 'mysql' ),
             ];
             $result = ! empty( $matches )
@@ -133,6 +134,8 @@ class AM_Ajax {
                 'midnight_min' => AM_Compute_Chokyo::format_min( $r['midnight_min'] ),
                 'overtime_min' => AM_Compute_Chokyo::format_min( $r['overtime_min'] ),
                 'source_crew_code' => $r['source_crew_code'] ?? '',
+                'hosei_min'    => (int) ( $r['hosei_min'] ?? 0 ),
+                'has_time'     => ! empty( $r['has_time'] ),
             ];
         }
         wp_send_json_success( [ 'rows' => $rows, 'alerts' => $alerts ] );

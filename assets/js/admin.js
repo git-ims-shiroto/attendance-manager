@@ -94,6 +94,14 @@
                 $tr.find('td:nth-child(9)').text(r.break_min);
                 $tr.find('td:nth-child(10)').text(r.midnight_min);
                 $tr.find('td:nth-child(11)').text(r.overtime_min);
+
+                // 補正時間：始業・終業がない日は0固定（無効）
+                var $hosei = $tr.find('.am-hosei-input');
+                if ($hosei.length) {
+                    $hosei.prop('disabled', !r.has_time);
+                    if (!r.has_time) $hosei.val(0);
+                    else if (!$hosei.is(':focus') && r.hosei_min !== undefined) $hosei.val(r.hosei_min);
+                }
             });
         });
     }
@@ -190,6 +198,7 @@
                     furikae_label: $tr.data('furikae') || '',
                     is_manual: $tr.attr('data-auto') === 'false' ? 1 : 0,
                     jiba: $tr.find('.am-jiba-input').is(':checked') ? 1 : 0,
+                    hosei_min: $tr.find('.am-hosei-input').is(':disabled') ? 10 : Math.max(0, parseInt($tr.find('.am-hosei-input').val(), 10) || 0),
                     hayatai_min: parseMin($tr.find('.am-hayatai-input').val()),
                     note: $tr.find('.am-note-input').val() || '',
                 });

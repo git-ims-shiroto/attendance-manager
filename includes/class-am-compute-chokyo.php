@@ -225,7 +225,7 @@ class AM_Compute_Chokyo {
                 'is_sun' => $is_sun, 'is_sat' => $is_sat, 'is_shitei_holiday' => $is_shitei,
                 'has_data' => $has_data, 'default_kintai' => $default_kintai,
                 'furikae_label' => '', 'is_manual' => false, 'jiba' => false,
-                'hayatai_min' => 0, 'note' => '',
+                'hayatai_min' => 0, 'hosei_min' => 10, 'note' => '',
                 'start_time' => $start_time, 'end_time' => $end_time,
                 'kousoku_min' => $kousoku_min, 'labor_min' => $labor_min,
                 'drive_min' => $drive_min, 'cargo_min' => $cargo_min,
@@ -246,6 +246,7 @@ class AM_Compute_Chokyo {
             $r['is_manual']   = (bool) $saved['is_manual'];
             $r['jiba']        = (bool) ( $saved['jiba'] ?? false );
             $r['hayatai_min'] = (int)  ( $saved['hayatai_min'] ?? 0 );
+            $r['hosei_min']   = max( 0, (int) ( $saved['hosei_min'] ?? 10 ) );
             $r['note']        = $saved['note'] ?? '';
 
             if ( $r['is_manual'] ) {
@@ -296,6 +297,13 @@ class AM_Compute_Chokyo {
             }
             $r['drive_min'] = $r['cargo_min'] = null;
             $r['has_data']  = true;
+        }
+        unset( $r );
+
+        // 補正時間（点呼など）：始業・終業時刻のない日は0。週集計の労働時間にのみ加算する。
+        foreach ( $rows as &$r ) {
+            $r['has_time'] = ( $r['start_time'] ?? '' ) !== '' && ( $r['end_time'] ?? '' ) !== '';
+            if ( ! $r['has_time'] ) $r['hosei_min'] = 0;
         }
         unset( $r );
 
@@ -605,7 +613,7 @@ class AM_Compute_Chokyo {
 
             // sumの初期化
             $sum = array_fill_keys(
-                [ 'kousoku_min','labor_min','overtime_labor_min','drive_min','cargo_min','midnight_min','overtime_min','days' ], 0
+                [ 'kousoku_min','labor_min','overtime_labor_min','drive_min','cargo_min','midnight_min','overtime_min','hosei_min','days' ], 0
             );
 
             // 第1週に前月繰越分を加算（週残業計算のため）
@@ -626,6 +634,10 @@ class AM_Compute_Chokyo {
                     if ( $r && $r['has_data'] ) {
                         $sum['kousoku_min']  += (int)( $r['kousoku_min']  ?? 0 );
                         $sum['labor_min']    += (int)( $r['labor_min']    ?? 0 );
+                        if ( $type === 'chokyo' ) {
+                            $sum['labor_min'] += (int)( $r['hosei_min'] ?? 0 );
+                            $sum['hosei_min'] += (int)( $r['hosei_min'] ?? 0 );
+                        }
                         $sum['drive_min']    += (int)( $r['drive_min']    ?? 0 );
                         $sum['cargo_min']    += (int)( $r['cargo_min']    ?? 0 );
                         $sum['midnight_min'] += (int)( $r['midnight_min'] ?? 0 );
@@ -688,7 +700,7 @@ class AM_Compute_Chokyo {
                 'labor_min'          => $net_labor,
                 'drive_min'          => $net_drive,
                 'cargo_min'          => $net_cargo,
-                'break_min'          => $net_kousoku - $net_labor,
+                'break_min'          => $net_kousoku - ( $net_labor - $sum['hosei_min'] ),
                 'midnight_min'       => $net_midnight,
                 'day_overtime_min'   => $sum['overtime_min'],
                 // 月間合計では月末時点の値を使う。画面の週行は従来どおり繰越バッジを表示する。
@@ -724,7 +736,8 @@ class AM_Compute_Chokyo {
 
             $total['confirmed_overtime'] += $w['confirmed_overtime'] ?? 0;
         }
-        $total['break_min'] = $total['kousoku_min'] - $total['labor_min'];
+        $total['break_min'] = 0;
+        foreach ( $weeks as $w ) { if ( ! $w['is_prev_carry'] ) $total['break_min'] += $w['break_min']; }
 
         return [ 'weeks' => $weeks, 'total' => $total ];
     }

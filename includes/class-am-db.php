@@ -400,7 +400,7 @@ class AM_DB {
         $params[] = $start;
         $params[] = $end;
         $rows  = $wpdb->get_results( $wpdb->prepare(
-            "SELECT employee_id, crew_code, work_date, kintai_type, furikae_label, is_manual, jiba, hayatai_min, note
+            "SELECT employee_id, crew_code, work_date, kintai_type, furikae_label, is_manual, jiba, hosei_min, hayatai_min, note
              FROM `{$wpdb->prefix}am_chokyo_kintai_log`
              WHERE ({$where}) AND work_date BETWEEN %s AND %s
              ORDER BY (employee_id IS NULL) DESC, id ASC",
