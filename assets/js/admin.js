@@ -304,6 +304,17 @@
 
         var _editingId = 0;
 
+        $(document).on('click', '#hosei-btn-save', function () {
+            var $m = $('#hosei-message');
+            $.post(amData.ajaxUrl, {
+                action: 'am_hosei_setting_save', nonce: amData.nonce, start_month: $('#hosei-start-month').val()
+            }, function (res) {
+                $m.text(res.success ? '保存しました' : (res.data && res.data.message) || '保存に失敗しました')
+                  .css('color', res.success ? '#2c5f2e' : '#d63638');
+                setTimeout(function () { $m.text(''); }, 4000);
+            });
+        });
+
         function hmShowMessage(msg, isError) {
             var $m = $('#hm-message');
             $m.text(msg).css('color', isError ? '#d63638' : '#2c5f2e');

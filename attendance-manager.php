@@ -52,6 +52,7 @@ class Tanpopo_AttendanceManager {
         // --- 種別管理 AJAX ---
         add_action( 'wp_ajax_am_jobtype_get',                [ 'AM_Ajax', 'jobtype_get' ] );
         add_action( 'wp_ajax_am_jobtype_save',               [ 'AM_Ajax', 'jobtype_save' ] );
+        add_action( 'wp_ajax_am_hosei_setting_save',         [ 'AM_Ajax', 'hosei_setting_save' ] );
 
         // --- 集計一覧 AJAX ---
         add_action( 'wp_ajax_am_summary_list_get',           [ 'AM_Ajax', 'summary_list_get' ] );
@@ -199,6 +200,11 @@ class Tanpopo_AttendanceManager {
                 && ! $wpdb->get_var( "SHOW COLUMNS FROM `{$table}` LIKE 'overtime_labor_min'" ) ) {
                 $wpdb->query( "ALTER TABLE `{$table}` ADD `overtime_labor_min` INT NULL DEFAULT NULL AFTER `labor_min`" );
             }
+        }
+
+        // 補正時間の適用開始月：未設定なら導入月とし、過去月の集計を変えない
+        if ( get_option( 'am_hosei_start_month', null ) === null ) {
+            add_option( 'am_hosei_start_month', date( 'Y-m' ) );
         }
 
         // 長距離：補正時間（点呼など・分）
@@ -453,6 +459,7 @@ class Tanpopo_AttendanceManager {
         $dow_labels = [ '日', '月', '火', '水', '木', '金', '土' ];
 
         // 種別管理用データ
+        $hosei_start_month = AM_DB::get_hosei_start_month();
         $job_types = function_exists( 'emp_get_job_types' ) ? emp_get_job_types() : [];
         $mappings  = AM_DB::get_job_type_mappings();
         $unlinked_crew_codes = AM_DB::get_unlinked_crew_codes();

@@ -301,9 +301,14 @@ class AM_Compute_Chokyo {
         unset( $r );
 
         // 補正時間（点呼など）：始業・終業時刻のない日は0。週集計の労働時間にのみ加算する。
+        $hosei_start = AM_DB::get_hosei_start_month();
         foreach ( $rows as &$r ) {
             $r['has_time'] = ( $r['start_time'] ?? '' ) !== '' && ( $r['end_time'] ?? '' ) !== '';
-            if ( ! $r['has_time'] ) $r['hosei_min'] = 0;
+            // 適用開始月より前の月、または始業・終業がない日は0
+            if ( ! $r['has_time'] || $year_month < $hosei_start ) {
+                $r['hosei_min'] = 0;
+                if ( $year_month < $hosei_start ) $r['has_time'] = false;
+            }
         }
         unset( $r );
 

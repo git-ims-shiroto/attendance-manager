@@ -304,6 +304,17 @@ class AM_Ajax {
        休日マスタ AJAX（共通）
        ============================================================= */
 
+    public static function hosei_setting_save() {
+        check_ajax_referer( 'am_nonce', 'nonce' );
+        if ( ! current_user_can( 'manage_custom_plugin_settings' ) ) wp_die( -1 );
+        $month = sanitize_text_field( wp_unslash( $_POST['start_month'] ?? '' ) );
+        if ( ! preg_match( '/^\d{4}-(0[1-9]|1[0-2])$/', $month ) ) {
+            wp_send_json_error( [ 'message' => '適用開始月は YYYY-MM 形式で指定してください' ] );
+        }
+        update_option( 'am_hosei_start_month', $month );
+        wp_send_json_success( [ 'start_month' => $month ] );
+    }
+
     public static function holiday_get_rules() {
         check_ajax_referer( 'am_nonce', 'nonce' );
         if ( ! current_user_can( 'manage_custom_plugin_settings' ) ) wp_die( -1 );

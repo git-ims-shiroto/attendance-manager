@@ -385,6 +385,12 @@ class AM_DB {
     /* ---------------------------------------------------------------
      * 【長距離用】保存済み勤怠取得
      * ------------------------------------------------------------- */
+    /** 補正時間の適用開始月（YYYY-MM）。この月以降にのみ補正時間を反映する。 */
+    public static function get_hosei_start_month() {
+        $v = (string) get_option( 'am_hosei_start_month', '' );
+        return preg_match( '/^\d{4}-(0[1-9]|1[0-2])$/', $v ) ? $v : date( 'Y-m' );
+    }
+
     public static function get_chokyo_saved_kintai( $employee_id, $year_month, $crew_codes = [] ) {
         global $wpdb;
         $start = $year_month . '-01';
