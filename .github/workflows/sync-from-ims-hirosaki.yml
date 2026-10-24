@@ -1,0 +1,50 @@
+name: Sync from ims-hirosaki/attendance-manager (staging)
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * *'  # 毎日 AM 9:00 JST
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # ← push権限を明示的に付与
+
+    steps:
+      - name: Checkout destination repo (git-ims-shiroto)
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Save this sync workflow before overwrite
+        run: |
+          cp .github/workflows/sync-from-ims-hirosaki.yml /tmp/sync-from-ims-hirosaki.yml
+
+      - name: Add upstream remote (ims-hirosaki / public)
+        run: |
+          git remote add upstream https://github.com/ims-hirosaki/attendance-manager.git
+
+      - name: Fetch upstream staging branch
+        run: |
+          git fetch upstream staging
+
+      - name: Reset main to upstream/staging
+        run: |
+          git checkout main
+          git reset --hard upstream/staging
+
+      - name: Remove upstream workflows / Restore sync workflow
+        run: |
+          rm -rf .github/workflows/
+          mkdir -p .github/workflows
+          cp /tmp/sync-from-ims-hirosaki.yml .github/workflows/sync-from-ims-hirosaki.yml
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "chore: sync from ims-hirosaki/staging (workflows excluded)" || echo "No changes to commit"
+          git push origin main --force
